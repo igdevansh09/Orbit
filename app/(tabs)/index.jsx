@@ -16,6 +16,7 @@ import { useFocusEffect } from "expo-router"; // Added useFocusEffect
 import { getHomeStyles } from "../../assets/styles/home.styles";
 import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
+import ExperienceCard from "../../components/ExperienceCard";
 
 // --- 1. SUB-COMPONENT: Feed Card (No changes here) ---
 const FeedCard = ({ item, theme, styles }) => {
@@ -171,7 +172,10 @@ export default function Home() {
       <FlatList
         data={experiences}
         renderItem={({ item }) => (
-          <FeedCard item={item} theme={theme} styles={styles} />
+          <ExperienceCard
+            item={item}
+            readOnly={true} // <--- Hides buttons everywhere
+          />
         )}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}

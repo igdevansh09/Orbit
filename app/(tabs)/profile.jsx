@@ -9,8 +9,8 @@ import {
   Alert,
 } from "react-native";
 import { Image } from "expo-image";
-import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "expo-router";
+import { useState, useMemo, useCallback } from "react"; // Added useCallback
+import { useRouter, useFocusEffect } from "expo-router"; // Added useFocusEffect
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 
@@ -19,6 +19,7 @@ import { getProfileStyles } from "../../assets/styles/profile.styles";
 import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../store/authStore";
+import ExperienceCard from "../../components/ExperienceCard";
 
 // --- 1. SUB-COMPONENT: Profile Post Card ---
 const ProfileFeedCard = ({ item, user, styles, theme }) => {
@@ -111,11 +112,14 @@ export default function Profile() {
   const theme = Colors[colorScheme ?? "light"];
   const styles = useMemo(() => getProfileStyles(theme), [theme]);
 
-  useEffect(() => {
-    if (user) {
-      fetchUserExperiences();
-    }
-  }, [user]);
+  // --- REPLACED useEffect WITH useFocusEffect ---
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        fetchUserExperiences();
+      }
+    }, [user]),
+  );
 
   const fetchUserExperiences = async (isRefresh = false) => {
     if (!user) return;
@@ -165,7 +169,7 @@ export default function Profile() {
   const handleAvatarPick = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Updated to use Enum
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
@@ -282,11 +286,13 @@ export default function Profile() {
         data={experiences}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <ProfileFeedCard
+          <ExperienceCard
             item={item}
-            user={user}
-            styles={styles}
-            theme={theme}
+            readOnly={false} // <--- Shows buttons if I own it
+            onDeleteSuccess={(id) => {
+              // FIX: Changed setMyPosts to setExperiences
+              setExperiences((prev) => prev.filter((post) => post.id !== id));
+            }}
           />
         )}
         ListHeaderComponent={renderHeader}

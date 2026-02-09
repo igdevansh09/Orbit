@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,14 +10,16 @@ import {
   Alert,
   ActivityIndicator,
   useColorScheme,
+  StyleSheet,
 } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { decode } from "base64-arraybuffer";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 
+// Internal Imports
 import { getCreateStyles } from "../../assets/styles/create.styles";
 import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
@@ -26,38 +28,69 @@ import { useAuthStore } from "../../store/authStore";
 export default function Create() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const params = useLocalSearchParams();
 
+  // Theme
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const theme = Colors[colorScheme === "dark" ? "dark" : "light"];
   const styles = useMemo(() => getCreateStyles(theme), [theme]);
 
-  const [title, setTitle] = useState("");
-  // REMOVED: college and branch states (we get them from user.user_metadata)
-  const [caption, setCaption] = useState("");
+  // --- STATE ---
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [postId, setPostId] = useState(null);
+
+  const [company, setCompany] = useState("");
+  const [role, setRole] = useState("");
+  const [category, setCategory] = useState("Interview");
+  const [review, setReview] = useState("");
   const [rating, setRating] = useState(3);
   const [image, setImage] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // --- GET USER METADATA ---
-  const userBranch = user?.user_metadata?.branch || "Student";
-  const userCollege = user?.user_metadata?.college || "NSUT";
-  const userName = user?.user_metadata?.username || "Anonymous";
-  const userAvatar = user?.user_metadata?.avatar_url || null;
+  const CATEGORIES = ["Interview", "OA", "Internship"];
 
+  // --- RESET FORM HELPER ---
+  const resetForm = () => {
+    setIsEditMode(false);
+    setPostId(null);
+    setCompany("");
+    setRole("");
+    setCategory("Interview");
+    setReview("");
+    setRating(3);
+    setImage(null);
+    setImageBase64(null);
+  };
+
+  // --- FOCUS EFFECT (The Fix) ---
+  useFocusEffect(
+    useCallback(() => {
+      // FIX: We only check primitives (strings), not the whole 'params' object
+      // This prevents the form from resetting while you type
+      if (params.isEdit === "true") {
+        setIsEditMode(true);
+        setPostId(params.id);
+        setCompany(params.initialCompany || "");
+        setRole(params.initialRole || "");
+        setCategory(params.initialCategory || "Interview");
+        setReview(params.initialReview || "");
+        setRating(
+          params.initialDifficulty ? parseInt(params.initialDifficulty) : 3,
+        );
+        setImage(params.initialImage || null);
+      } else {
+        // Only reset if we are NOT in edit mode (Clean slate for new posts)
+        resetForm();
+      }
+    }, [params.isEdit, params.id]), // <--- CRITICAL FIX: Only run if these specific values change
+  );
+
+  // --- IMAGE PICKER ---
   const pickImage = async () => {
     try {
-      if (Platform.OS !== "web") {
-        const { status } =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Permission Denied", "We need camera roll permissions.");
-          return;
-        }
-      }
-
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.5,
@@ -79,67 +112,87 @@ export default function Create() {
         }
       }
     } catch (error) {
-      console.error("Error picking image:", error);
       Alert.alert("Error", "Problem selecting image.");
     }
   };
 
+  // --- SUBMIT HANDLER ---
   const handleSubmit = async () => {
-    if (!title.trim())
-      return Alert.alert("Missing Detail", "Please enter the Company Name.");
-    if (!caption.trim())
-      return Alert.alert(
-        "Missing Detail",
-        "Please write your experience review.",
-      );
-    if (!imageBase64)
-      return Alert.alert(
-        "Missing Evidence",
-        "Please upload a screenshot or proof.",
-      );
+    // 1. Validation
+    if (!company.trim())
+      return Alert.alert("Missing Detail", "Please enter Company Name.");
+    if (!role.trim())
+      return Alert.alert("Missing Detail", "Please enter Role.");
+    if (!review.trim())
+      return Alert.alert("Missing Detail", "Please write your experience.");
+
+    // Image Validation: Required for New, Optional for Edit
+    if (!isEditMode && !image)
+      return Alert.alert("Missing Evidence", "Please upload a screenshot.");
 
     try {
       setLoading(true);
       if (!user) throw new Error("No user logged in");
 
-      // 1. Upload Image
-      const fileName = `${user.id}/${Date.now()}_post.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from("experience-uploads")
-        .upload(fileName, decode(imageBase64), { contentType: "image/jpeg" });
+      let finalImageUrl = image;
 
-      if (uploadError) throw uploadError;
+      // 2. Upload Image (Only if a NEW image was picked)
+      if (imageBase64) {
+        const fileName = `${user.id}/${Date.now()}_post.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("experience-uploads")
+          .upload(fileName, decode(imageBase64), { contentType: "image/jpeg" });
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("experience-uploads").getPublicUrl(fileName);
+        if (uploadError) throw uploadError;
 
-      // 2. Insert Data (Auto-filling College & Branch)
-      const { error: insertError } = await supabase.from("experiences").insert([
-        {
-          company: title.trim(),
-          college: userCollege, // Auto-filled
-          branch: userBranch, // Auto-filled
-          description: caption.trim(),
-          difficulty: rating,
-          image_url: publicUrl,
-          user_id: user.id,
-          username: userName,
-          user_avatar: userAvatar,
-        },
-      ]);
+        const { data } = supabase.storage
+          .from("experience-uploads")
+          .getPublicUrl(fileName);
+        finalImageUrl = data.publicUrl;
+      }
 
-      if (insertError) throw insertError;
+      // 3. Prepare Payload
+      const payload = {
+        company: company.trim(),
+        role: role.trim(),
+        category: category,
+        description: review.trim(),
+        difficulty: rating,
+        image_url: finalImageUrl,
+      };
 
-      Alert.alert("Success", "Experience shared!");
-      setTitle("");
-      setCaption("");
-      setRating(3);
-      setImage(null);
-      setImageBase64(null);
-      router.push("/");
+      // 4. Update or Insert
+      if (isEditMode && postId) {
+        // UPDATE
+        const { error } = await supabase
+          .from("experiences")
+          .update(payload)
+          .eq("id", postId);
+
+        if (error) throw error;
+        Alert.alert("Success", "Experience Updated!");
+      } else {
+        // CREATE
+        const { error } = await supabase.from("experiences").insert([
+          {
+            ...payload,
+            college: user?.user_metadata?.college || "NSUT",
+            branch: user?.user_metadata?.branch || "Student",
+            user_id: user.id,
+            username: user?.user_metadata?.username || "Anonymous",
+            user_avatar: user?.user_metadata?.avatar_url,
+          },
+        ]);
+
+        if (error) throw error;
+        Alert.alert("Success", "Experience Shared!");
+      }
+
+      // 5. CLEANUP (Crucial Step)
+      resetForm(); // Wipe state manually
+      router.setParams({}); // Clear URL params so they don't persist
+      router.replace("/(tabs)/"); // Go Home
     } catch (error) {
-      console.error("Error creating post:", error);
       Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
@@ -177,9 +230,13 @@ export default function Create() {
       >
         <View style={styles.card}>
           <View style={styles.header}>
-            <Text style={styles.title}>Share Experience</Text>
+            <Text style={styles.title}>
+              {isEditMode ? "Edit Experience" : "Share Experience"}
+            </Text>
             <Text style={styles.subtitle}>
-              Help juniors by sharing your interview details
+              {isEditMode
+                ? "Update your details below"
+                : "Help juniors by sharing your interview details"}
             </Text>
           </View>
 
@@ -200,9 +257,65 @@ export default function Create() {
                   style={styles.input}
                   placeholder="e.g. Amazon, Google"
                   placeholderTextColor={theme.placeholderText}
-                  value={title}
-                  onChangeText={setTitle}
+                  value={company}
+                  onChangeText={setCompany}
                 />
+              </View>
+            </View>
+
+            {/* ROLE */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>
+                Role / Position <Text style={{ color: "red" }}>*</Text>
+              </Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={theme.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. SDE Intern, Analyst"
+                  placeholderTextColor={theme.placeholderText}
+                  value={role}
+                  onChangeText={setRole}
+                />
+              </View>
+            </View>
+
+            {/* CATEGORY */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>
+                Type <Text style={{ color: "red" }}>*</Text>
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                {CATEGORIES.map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    onPress={() => setCategory(cat)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor:
+                        category === cat ? theme.primary : theme.border,
+                      backgroundColor:
+                        category === cat ? theme.primary : "transparent",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: category === cat ? "#FFF" : theme.textPrimary,
+                        fontWeight: category === cat ? "bold" : "normal",
+                      }}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
@@ -241,15 +354,25 @@ export default function Create() {
                 Your Experience <Text style={{ color: "red" }}>*</Text>
               </Text>
               <TextInput
-                style={styles.textArea}
-                placeholder="What questions were asked? Any tips?"
-                placeholderTextColor={theme.placeholderText}
-                value={caption}
-                onChangeText={setCaption}
-                multiline
+                placeholder="Share your interview questions, rounds, and tips..."
+                placeholderTextColor={theme.textSecondary}
+                value={review}
+                onChangeText={setReview}
+                multiline={true}
+                textAlignVertical="top"
+                style={[
+                  styles.input,
+                  {
+                    height: "auto",
+                    minHeight: 120,
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  },
+                ]}
               />
             </View>
 
+            {/* SUBMIT BUTTON */}
             <TouchableOpacity
               style={styles.button}
               onPress={handleSubmit}
@@ -260,12 +383,14 @@ export default function Create() {
               ) : (
                 <>
                   <Ionicons
-                    name="cloud-upload-outline"
+                    name={isEditMode ? "save-outline" : "cloud-upload-outline"}
                     size={20}
                     color="#fff"
                     style={styles.buttonIcon}
                   />
-                  <Text style={styles.buttonText}>Post Experience</Text>
+                  <Text style={styles.buttonText}>
+                    {isEditMode ? "Update Experience" : "Post Experience"}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>

@@ -7,7 +7,7 @@ export const getHomeStyles = (COLORS) =>
       backgroundColor: COLORS.background,
     },
     listContainer: {
-      padding: 20,
+      padding: 10,
       paddingBottom: 100,
     },
     header: {
