@@ -1,101 +1,71 @@
 import { useEffect } from "react";
-import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
+import { Stack, useRouter, useSegments, SplashScreen } from "expo-router";
 import { useFonts } from "expo-font";
-import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
-import * as SecureStore from "expo-secure-store";
+import { StatusBar } from "expo-status-bar";
+import { View, useColorScheme } from "react-native";
+import { useAuthStore } from "../store/authStore";
+import { Colors } from "../constants/colors";
 
-// 1. ADD YOUR KEY HERE
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-if (!publishableKey) {
-  throw new Error("Missing Publishable Key");
-}
-
-// Token Cache for Persistence (Keeps user logged in)
-const tokenCache = {
-  async getToken(key) {
-    try {
-      return await SecureStore.getItemAsync(key);
-    } catch (err) {
-      return null;
-    }
-  },
-  async saveToken(key, value) {
-    try {
-      return await SecureStore.setItemAsync(key, value);
-    } catch (err) {
-      return;
-    }
-  },
-};
-
+// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-function RootLayoutNav() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    const inAuthGroup = segments[0] === "(auth)";
-    const isCallbackPath = segments[0] === "--"; // Expo OAuth callback deep link
-
-    // Add a small delay to ensure routes are fully registered
-    const timeout = setTimeout(() => {
-      // If this is the OAuth callback path, immediately redirect based on session
-      if (isCallbackPath) {
-        if (isSignedIn) {
-          router.replace("/(tabs)/index");
-        } else {
-          router.replace("/(auth)/login");
-        }
-        return;
-      }
-
-      if (isSignedIn && inAuthGroup) {
-        // User is logged in, redirect to home screen
-        router.replace("/(tabs)/index");
-      } else if (!isSignedIn && !inAuthGroup) {
-        // User is NOT logged in, redirect to login page
-        router.replace("/(auth)/login");
-      }
-    }, 50);
-
-    return () => clearTimeout(timeout);
-  }, [isSignedIn, isLoaded, segments]);
-
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="index" />
-    </Stack>
-  );
-}
-
 export default function RootLayout() {
+  const router = useRouter();
+  const segments = useSegments();
+  const colorScheme = useColorScheme();
+
+  // Get Auth State
+  const { checkAuth, user, isCheckingAuth } = useAuthStore();
+
+  // Load Fonts (Optional - kept from original)
   const [fontsLoaded] = useFonts({
     "JetBrainsMono-Medium": require("../assets/fonts/JetBrainsMono-Medium.ttf"),
   });
 
+  // 1. Initialize Auth on App Start
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    checkAuth();
+  }, []);
 
-  if (!fontsLoaded) return null;
+  // 2. Handle Navigation / Protection
+  useEffect(() => {
+    if (isCheckingAuth) return; // Wait until auth check is done
+
+    const inAuthGroup = segments[0] === "(auth)";
+    const isLoggedIn = !!user; // simple boolean check
+
+    if (!isLoggedIn && !inAuthGroup) {
+      // If not logged in and not in auth group, go to login
+      router.replace("/(auth)");
+    } else if (isLoggedIn && inAuthGroup) {
+      // If logged in and inside auth group (login/signup), go to home
+      router.replace("/(tabs)");
+    }
+  }, [user, isCheckingAuth, segments]);
+
+  // 3. Hide Splash Screen when ready
+  useEffect(() => {
+    if (fontsLoaded && !isCheckingAuth) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, isCheckingAuth]);
+
+  // Show nothing while loading (Splash screen covers this)
+  if (!fontsLoaded || isCheckingAuth) {
+    return null;
+  }
+
+  // Define status bar style based on theme
+  const statusBarStyle = colorScheme === "dark" ? "light" : "dark";
+  const backgroundColor = Colors[colorScheme ?? "light"].background;
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <SafeAreaProvider>
-          <RootLayoutNav />
-          <StatusBar style="dark" />
-        </SafeAreaProvider>
-      </ClerkLoaded>
-    </ClerkProvider>
+    <View style={{ flex: 1, backgroundColor }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+      </Stack>
+      <StatusBar style={statusBarStyle} />
+    </View>
   );
 }

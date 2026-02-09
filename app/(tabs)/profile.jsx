@@ -3,93 +3,95 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
-  RefreshControl, // <--- 1. IMPORTED REFRESH CONTROL
-  Dimensions,
+  RefreshControl,
+  useColorScheme,
+  Alert,
 } from "react-native";
-import { useUser, useAuth } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
-import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import COLORS from "../../constants/colors";
-import profileStyles from "../../assets/styles/profile.styles";
+import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 
-// --- 1. SUB-COMPONENT: Profile Post Card (Handles Read More & User Details) ---
-const ProfileFeedCard = ({ item, user }) => {
+// Imports
+import { getProfileStyles } from "../../assets/styles/profile.styles";
+import { Colors } from "../../constants/colors";
+import { supabase } from "../../lib/supabase";
+import { useAuthStore } from "../../store/authStore";
+
+// --- 1. SUB-COMPONENT: Profile Post Card ---
+const ProfileFeedCard = ({ item, user, styles, theme }) => {
   const [expanded, setExpanded] = useState(false);
   const CAPTION_LIMIT = 100;
-  const isLongText = item.caption && item.caption.length > CAPTION_LIMIT;
+  const captionText = item.description || "";
+  const isLongText = captionText.length > CAPTION_LIMIT;
+
+  const renderStars = (rating) => {
+    return [1, 2, 3, 4, 5].map((i) => (
+      <Ionicons
+        key={i}
+        name={i <= rating ? "star" : "star-outline"}
+        size={16}
+        color={i <= rating ? "#f4b400" : theme.textSecondary}
+        style={{ marginRight: 2 }}
+      />
+    ));
+  };
 
   return (
-    <View style={cardStyles.bookCard}>
-      {/* Header */}
-      <View style={cardStyles.bookHeader}>
-        <View style={cardStyles.userInfo}>
-          <Image source={user?.imageUrl} style={cardStyles.avatar} />
+    <View style={styles.bookCard}>
+      <View style={styles.bookHeader}>
+        <View style={styles.userInfo}>
+          {/* Author Avatar */}
+          <Image
+            source={{
+              uri:
+                user?.user_metadata?.avatar_url ||
+                `https://ui-avatars.com/api/?name=${user?.user_metadata?.username}&background=random`,
+            }}
+            style={styles.cardAvatar}
+          />
           <View>
-            {/* NAME */}
-            <Text style={cardStyles.username}>{user?.fullName}</Text>
-
-            {/* EMAIL */}
-            <Text style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
-              {user?.primaryEmailAddress?.emailAddress}
+            <Text style={styles.cardUsername}>
+              {user?.user_metadata?.username || "You"}
             </Text>
-
-            {/* COLLEGE & BRANCH */}
-            <Text
-              style={{ fontSize: 12, fontWeight: "600", color: COLORS.primary }}
-            >
-              {item.college} • {item.branch}
+            <Text style={{ fontSize: 11, color: theme.textSecondary }}>
+              {user?.email}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Image */}
-      <View style={cardStyles.bookImageContainer}>
-        <Image
-          source={item.image_url}
-          style={cardStyles.bookImage}
-          contentFit="cover"
-        />
-      </View>
-
-      {/* Details */}
-      <View style={cardStyles.bookDetails}>
-        <Text style={cardStyles.bookTitle}>{item.title}</Text>
-
-        {/* Stars */}
-        <View style={cardStyles.ratingContainer}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Ionicons
-              key={i}
-              name={i <= item.rating ? "star" : "star-outline"}
-              size={16}
-              color={i <= item.rating ? "#f4b400" : COLORS.textSecondary}
-              style={{ marginRight: 2 }}
-            />
-          ))}
+      {item.image_url && (
+        <View style={styles.bookImageContainer}>
+          <Image
+            source={{ uri: item.image_url }}
+            style={styles.bookImage}
+            contentFit="cover"
+          />
         </View>
+      )}
 
-        {/* Caption with Read More Logic */}
-        <Text style={cardStyles.caption}>
+      <View style={styles.bookDetails}>
+        <Text style={styles.bookTitle}>{item.company}</Text>
+        <View style={styles.ratingContainer}>
+          {renderStars(item.difficulty)}
+        </View>
+        <Text style={styles.caption}>
           {expanded || !isLongText
-            ? item.caption
-            : `${item.caption.slice(0, CAPTION_LIMIT)}...`}
+            ? captionText
+            : `${captionText.slice(0, CAPTION_LIMIT)}...`}
         </Text>
-
         {isLongText && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
-            <Text style={cardStyles.readMore}>
+            <Text style={styles.readMore}>
               {expanded ? "Show Less" : "Read More"}
             </Text>
           </TouchableOpacity>
         )}
-
-        <Text style={cardStyles.date}>
+        <Text style={styles.date}>
           Shared on {new Date(item.created_at).toLocaleDateString()}
         </Text>
       </View>
@@ -99,201 +101,175 @@ const ProfileFeedCard = ({ item, user }) => {
 
 // --- 2. MAIN COMPONENT ---
 export default function Profile() {
-  const { user } = useUser();
-  const { signOut } = useAuth();
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); // <--- 2. ADDED REFRESH STATE
-  const router = useRouter();
+  const { user, logout, uploadAvatar, isLoading } = useAuthStore();
+  const [experiences, setExperiences] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [uploading, setUploading] = useState(false); // Local loading state for avatar
+
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
+  const styles = useMemo(() => getProfileStyles(theme), [theme]);
 
   useEffect(() => {
     if (user) {
-      fetchUserBooks();
+      fetchUserExperiences();
     }
   }, [user]);
 
-  // Updated fetch logic to handle refresh
-  const fetchUserBooks = async (isRefresh = false) => {
+  const fetchUserExperiences = async (isRefresh = false) => {
     if (!user) return;
     try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
+      if (isRefresh) setRefreshing(true);
       const { data, error } = await supabase
-        .from("books")
+        .from("experiences")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      if (data) setBooks(data);
+      if (data) setExperiences(data);
     } catch (err) {
       console.error("Error fetching posts:", err);
     } finally {
-      setLoading(false);
-      setRefreshing(false); // <--- STOP REFRESHING
+      setRefreshing(false);
     }
   };
 
   const handleLogout = async () => {
-    await signOut();
+    await logout();
+  };
+
+  // --- AVATAR UPLOAD LOGIC ---
+  const handleAvatarPick = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setUploading(true);
+        const res = await uploadAvatar(result.assets[0].base64);
+        setUploading(false);
+
+        if (res.success) {
+          Alert.alert("Success", "Profile picture updated!");
+        } else {
+          Alert.alert("Error", res.error);
+        }
+      }
+    } catch (error) {
+      console.log("Pick error:", error);
+      setUploading(false);
+      Alert.alert("Error", "Failed to pick image");
+    }
   };
 
   // --- HEADER COMPONENT ---
   const renderHeader = () => (
-    <View style={{ marginBottom: 20 }}>
-      {/* Profile Info */}
-      <View style={profileStyles.profileHeader}>
-        <Image source={user?.imageUrl} style={profileStyles.profileImage} />
-        <View style={profileStyles.profileInfo}>
-          <Text style={profileStyles.username}>{user?.fullName}</Text>
-          <Text style={profileStyles.email}>
-            {user?.primaryEmailAddress?.emailAddress}
+    <View style={styles.headerContainer}>
+      <View style={styles.profileHeader}>
+        {/* AVATAR WITH EDIT BUTTON */}
+        <TouchableOpacity onPress={handleAvatarPick} disabled={uploading}>
+          <View>
+            <Image
+              source={{
+                uri:
+                  user?.user_metadata?.avatar_url ||
+                  `https://ui-avatars.com/api/?name=${user?.user_metadata?.username}&background=random&size=256`,
+              }}
+              style={styles.profileImage}
+              contentFit="cover"
+              transition={500}
+            />
+            {/* Edit Icon Overlay */}
+            <View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                backgroundColor: theme.primary,
+                borderRadius: 12,
+                padding: 6,
+                borderWidth: 2,
+                borderColor: theme.background,
+              }}
+            >
+              {uploading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="camera" size={14} color="#fff" />
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.profileInfo}>
+          <Text style={styles.username}>
+            {user?.user_metadata?.username || "Scholar"}
+          </Text>
+          <Text style={styles.email}>{user?.email}</Text>
+          <Text style={styles.metaText}>
+            {user?.user_metadata?.college || "NSUT"} •{" "}
+            {user?.user_metadata?.branch || "Student"}
           </Text>
         </View>
       </View>
 
-      {/* Logout Button */}
-      <TouchableOpacity
-        style={profileStyles.logoutButton}
-        onPress={handleLogout}
-      >
-        <Ionicons name="log-out-outline" size={20} color="white" />
-        <Text style={profileStyles.logoutText}>Logout</Text>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={20} color={theme.white} />
+        <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
 
-      {/* Section Title */}
-      <View style={[profileStyles.booksHeader, { marginTop: 20 }]}>
-        <Text style={profileStyles.booksTitle}>Your Contributions 📚</Text>
+      <View style={styles.sectionTitleContainer}>
+        <Text style={styles.sectionTitle}>Your Contributions 📚</Text>
       </View>
     </View>
   );
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: COLORS.background, paddingTop: 30 }}
-    >
-      {loading && !refreshing ? ( // Only show full loader on initial load
-        <ActivityIndicator
-          size="large"
-          color={COLORS.primary}
-          style={{ marginTop: 50 }}
-        />
-      ) : (
-        <FlatList
-          data={books}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <ProfileFeedCard item={item} user={user} />}
-          ListHeaderComponent={renderHeader}
-          contentContainerStyle={{
-            paddingHorizontal: 12,
-            paddingBottom: 80,
-          }}
-          showsVerticalScrollIndicator={false}
-          // <--- 3. ADDED REFRESH CONTROL HERE
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchUserBooks(true)}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
+    <View style={styles.container}>
+      <FlatList
+        data={experiences}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <ProfileFeedCard
+            item={item}
+            user={user}
+            styles={styles}
+            theme={theme}
+          />
+        )}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={{
+          paddingHorizontal: 12,
+          paddingBottom: 80,
+        }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchUserExperiences(true)}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
+        ListEmptyComponent={
+          <View style={{ alignItems: "center", marginTop: 50 }}>
+            <Ionicons
+              name="documents-outline"
+              size={48}
+              color={theme.textSecondary}
             />
-          }
-          ListEmptyComponent={
-            <View style={{ alignItems: "center", marginTop: 50 }}>
-              <Text style={{ color: "#999" }}>
-                You haven't posted anything yet.
-              </Text>
-            </View>
-          }
-        />
-      )}
+            <Text style={{ color: theme.textSecondary, marginTop: 10 }}>
+              You haven't shared any experiences yet.
+            </Text>
+          </View>
+        }
+      />
     </View>
   );
 }
-
-// --- STYLES ---
-const cardStyles = StyleSheet.create({
-  bookCard: {
-    backgroundColor: COLORS.cardBackground || "white", // Fallback to white if undefined
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#F3F4F6",
-    overflow: "hidden",
-    width: "100%",
-  },
-  bookHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  username: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 1,
-  },
-  bookImageContainer: {
-    width: "100%",
-    height: 240,
-    backgroundColor: "#F9FAFB",
-  },
-  bookImage: {
-    width: "100%",
-    height: "100%",
-  },
-  bookDetails: {
-    padding: 16,
-  },
-  bookTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 6,
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  caption: {
-    fontSize: 14,
-    color: "#4B5563",
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  readMore: {
-    color: COLORS.primary || "#2563EB",
-    fontWeight: "600",
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  date: {
-    fontSize: 12,
-    color: "#9CA3AF",
-    fontWeight: "500",
-  },
-});

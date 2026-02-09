@@ -1,6 +1,4 @@
-// FOREST
-
-const COLORS = {
+const FOREST_LIGHT = {
   primary: "#4CAF50",
   textPrimary: "#2e5a2e",
   textSecondary: "#688f68",
@@ -14,56 +12,21 @@ const COLORS = {
   black: "#000000",
 };
 
-// RETRO
-/*
-const COLORS = {
-  primary: "#e17055",
-  textPrimary: "#784e2d",
-  textSecondary: "#a58e7c",
-  textDark: "#50372a",
-  placeholderText: "#767676",
-  background: "#ede1d1",
-  cardBackground: "#faf5eb",
-  inputBackground: "#f7f2ea",
-  border: "#e2d6c1",
+const FOREST_DARK = {
+  primary: "#66BB6A", // Lighter green for dark mode contrast
+  textPrimary: "#E8F5E9", // Light greenish white
+  textSecondary: "#A5D6A7", // Soft green
+  textDark: "#FFFFFF", // White for headers
+  placeholderText: "#999999",
+  background: "#051005", // Very deep dark green (almost black)
+  cardBackground: "#1B2E1B", // Dark forest green
+  inputBackground: "#233823", // Slightly lighter for inputs
+  border: "#2E4D2E",
   white: "#ffffff",
   black: "#000000",
 };
-*/
 
-
-// OCEAN
-/*
-const COLORS = {
-  primary: "#1976D2", 
-  textPrimary: "#1a4971",
-  textSecondary: "#6d93b8", 
-  textDark: "#0d2b43", 
-  placeholderText: "#767676",
-  background: "#e3f2fd", 
-  cardBackground: "#f5f9ff",
-  inputBackground: "#f0f8ff", 
-  border: "#bbdefb",
-  white: "#ffffff",
-  black: "#000000",
+export const Colors = {
+  light: FOREST_LIGHT,
+  dark: FOREST_DARK,
 };
-*/
-
-// BLOSSOM
-/*
-const COLORS = {
-  primary: "#EC407A", 
-  textPrimary: "#7d2150", 
-  textSecondary: "#b06a8f", 
-  textDark: "#5a1836", 
-  placeholderText: "#767676",
-  background: "#fce4ec", 
-  cardBackground: "#fff5f8", 
-  inputBackground: "#fef8fa", 
-  border: "#f8bbd0",
-  white: "#ffffff",
-  black: "#000000",
-};
-*/
-
-export default COLORS;

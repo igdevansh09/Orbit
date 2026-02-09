@@ -2,34 +2,34 @@ import {
   View,
   Text,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  useColorScheme,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
-import styles from "../../assets/styles/home.styles";
-import COLORS from "../../constants/colors";
-import Loader from "../../components/Loader";
+// Imports
+import { getHomeStyles } from "../../assets/styles/home.styles";
+import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
-import { useUser } from "@clerk/clerk-expo";
 
-// --- 1. SUB-COMPONENT: Feed Card (Defined OUTSIDE to prevent re-renders) ---
-const FeedCard = ({ item }) => {
+// --- 1. SUB-COMPONENT: Feed Card ---
+const FeedCard = ({ item, theme, styles }) => {
   const [expanded, setExpanded] = useState(false);
   const CAPTION_LIMIT = 100;
-  const isLongText = item.caption && item.caption.length > CAPTION_LIMIT;
+  const captionText = item.description || "";
+  const isLongText = captionText.length > CAPTION_LIMIT;
 
-  // Helper for stars
   const renderStars = (rating) => {
     return [1, 2, 3, 4, 5].map((i) => (
       <Ionicons
         key={i}
         name={i <= rating ? "star" : "star-outline"}
         size={16}
-        color={i <= rating ? "#f4b400" : COLORS.textSecondary}
+        color={i <= rating ? "#f4b400" : theme.textSecondary}
         style={{ marginRight: 2 }}
       />
     ));
@@ -40,30 +40,29 @@ const FeedCard = ({ item }) => {
       {/* HEADER: User Info */}
       <View style={styles.bookHeader}>
         <View style={styles.userInfo}>
-          {/* Avatar: Uses Author Image or Fallback to Initials */}
+          {/* Avatar: Uses Saved Post Avatar OR Fallback */}
           <Image
-            source={
-              item.author_image ||
-              `https://ui-avatars.com/api/?name=${item.author_name || item.college || "User"}&background=random&color=fff`
-            }
+            source={{
+              uri:
+                item.user_avatar ||
+                `https://ui-avatars.com/api/?name=${item.username || "User"}&background=random&color=fff&size=128`,
+            }}
             style={styles.avatar}
+            contentFit="cover"
+            transition={500}
           />
           <View>
             {/* 1. AUTHOR NAME */}
-            <Text style={styles.username}>
-              {item.author_name || "Anonymous User"}
-            </Text>
+            <Text style={styles.username}>{item.username || "Anonymous"}</Text>
 
-            {/* 2. AUTHOR EMAIL */}
-            {item.author_email && (
-              <Text style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>
-                {item.author_email}
-              </Text>
-            )}
-
-            {/* 3. COLLEGE & BRANCH */}
+            {/* 2. COLLEGE & BRANCH */}
             <Text
-              style={{ fontSize: 12, fontWeight: "600", color: COLORS.primary }}
+              style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: theme.primary,
+                marginTop: 2,
+              }}
             >
               {item.college || "NSUT"} • {item.branch || "Student"}
             </Text>
@@ -71,34 +70,37 @@ const FeedCard = ({ item }) => {
         </View>
       </View>
 
-      {/* IMAGE */}
-      <View style={styles.bookImageContainer}>
-        <Image
-          source={item.image_url}
-          style={styles.bookImage}
-          contentFit="cover"
-        />
-      </View>
+      {/* IMAGE (If available) */}
+      {item.image_url && (
+        <View style={styles.bookImageContainer}>
+          <Image
+            source={{ uri: item.image_url }}
+            style={styles.bookImage}
+            contentFit="cover"
+            transition={500}
+          />
+        </View>
+      )}
 
       {/* DETAILS */}
       <View style={styles.bookDetails}>
-        <Text style={styles.bookTitle}>{item.title}</Text>
+        <Text style={styles.bookTitle}>{item.company}</Text>
 
-        {/* Rating */}
-        <View style={styles.ratingContainer}>{renderStars(item.rating)}</View>
+        <View style={styles.ratingContainer}>
+          {renderStars(item.difficulty)}
+        </View>
 
-        {/* Caption with Read More */}
         <Text style={styles.caption}>
           {expanded || !isLongText
-            ? item.caption
-            : `${item.caption.slice(0, CAPTION_LIMIT)}...`}
+            ? captionText
+            : `${captionText.slice(0, CAPTION_LIMIT)}...`}
         </Text>
 
         {isLongText && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
             <Text
               style={{
-                color: COLORS.primary,
+                color: theme.primary,
                 marginTop: 4,
                 fontWeight: "600",
               }}
@@ -118,26 +120,28 @@ const FeedCard = ({ item }) => {
 
 // --- 2. MAIN HOME COMPONENT ---
 export default function Home() {
-  const { user } = useUser();
-  const [books, setBooks] = useState([]);
+  const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const limit = 20;
 
-  const fetchBooks = async (isRefresh = false) => {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
+  const styles = useMemo(() => getHomeStyles(theme), [theme]);
+
+  const fetchExperiences = async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
 
       const { data, error } = await supabase
-        .from("books")
+        .from("experiences")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(limit);
+        .limit(20);
 
       if (error) throw error;
-      setBooks(data);
+      setExperiences(data);
     } catch (error) {
-      console.error("Error fetching books:", error);
+      console.error("Error fetching experiences:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -145,32 +149,45 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchBooks();
+    fetchExperiences();
   }, []);
 
-  if (loading) return <Loader />;
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: 10 }]}>
       <FlatList
-        data={books}
-        renderItem={({ item }) => <FeedCard item={item} />}
+        data={experiences}
+        renderItem={({ item }) => (
+          <FeedCard item={item} theme={theme} styles={styles} />
+        )}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => fetchBooks(true)}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
+            onRefresh={() => fetchExperiences(true)}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Orbit 🪐</Text>
+            <Text style={styles.headerTitle}>Orbit <Ionicons name="rocket-outline" size={24} color={theme.primary} /></Text>
             <Text style={styles.headerSubtitle}>
-              Discover great reads from the community..
+              Discover interview insights from the community
             </Text>
           </View>
         }
@@ -179,7 +196,7 @@ export default function Home() {
             <Ionicons
               name="book-outline"
               size={60}
-              color={COLORS.textSecondary}
+              color={theme.textSecondary}
             />
             <Text style={styles.emptyText}>No Experience shared yet</Text>
             <Text style={styles.emptySubtext}>

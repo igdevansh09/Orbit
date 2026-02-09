@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,35 +8,42 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Image,
   ActivityIndicator,
-  StyleSheet,
+  useColorScheme,
 } from "react-native";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useUser, useAuth } from "@clerk/clerk-expo";
 import { decode } from "base64-arraybuffer";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 
-// Make sure you have these helper files
-import styles from "../../assets/styles/create.styles";
-import COLORS from "../../constants/colors";
-import { supabase, createAuthenticatedClient } from "../../lib/supabase";
+import { getCreateStyles } from "../../assets/styles/create.styles";
+import { Colors } from "../../constants/colors";
+import { supabase } from "../../lib/supabase";
+import { useAuthStore } from "../../store/authStore";
 
 export default function Create() {
-  const { user } = useUser();
-  const { getToken } = useAuth();
   const router = useRouter();
+  const { user } = useAuthStore();
+
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
+  const styles = useMemo(() => getCreateStyles(theme), [theme]);
 
   const [title, setTitle] = useState("");
-  const [college, setCollege] = useState("");
-  const [branch, setBranch] = useState("");
+  // REMOVED: college and branch states (we get them from user.user_metadata)
   const [caption, setCaption] = useState("");
   const [rating, setRating] = useState(3);
   const [image, setImage] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // --- GET USER METADATA ---
+  const userBranch = user?.user_metadata?.branch || "Student";
+  const userCollege = user?.user_metadata?.college || "NSUT";
+  const userName = user?.user_metadata?.username || "Anonymous";
+  const userAvatar = user?.user_metadata?.avatar_url || null;
 
   const pickImage = async () => {
     try {
@@ -50,7 +57,7 @@ export default function Create() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: "images",
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.5,
@@ -59,7 +66,6 @@ export default function Create() {
 
       if (!result.canceled) {
         setImage(result.assets[0].uri);
-
         if (result.assets[0].base64) {
           setImageBase64(result.assets[0].base64);
         } else {
@@ -79,13 +85,8 @@ export default function Create() {
   };
 
   const handleSubmit = async () => {
-    // --- STRICT VALIDATION ---
     if (!title.trim())
       return Alert.alert("Missing Detail", "Please enter the Company Name.");
-    if (!college.trim())
-      return Alert.alert("Missing Detail", "Please enter your College Name.");
-    if (!branch.trim())
-      return Alert.alert("Missing Detail", "Please enter your Branch.");
     if (!caption.trim())
       return Alert.alert(
         "Missing Detail",
@@ -101,47 +102,37 @@ export default function Create() {
       setLoading(true);
       if (!user) throw new Error("No user logged in");
 
-      const token = await getToken({ template: "supabase" });
-      const authSupabase = createAuthenticatedClient(token);
-
       // 1. Upload Image
-      const fileName = `${user.id}/${Date.now()}.jpg`;
+      const fileName = `${user.id}/${Date.now()}_post.jpg`;
       const { error: uploadError } = await supabase.storage
-        .from("book-images")
+        .from("experience-uploads")
         .upload(fileName, decode(imageBase64), { contentType: "image/jpeg" });
 
       if (uploadError) throw uploadError;
 
-      // 2. Get URL
       const {
         data: { publicUrl },
-      } = supabase.storage.from("book-images").getPublicUrl(fileName);
+      } = supabase.storage.from("experience-uploads").getPublicUrl(fileName);
 
-      // 3. Insert Data
-      const { error: insertError } = await authSupabase.from("books").insert([
+      // 2. Insert Data (Auto-filling College & Branch)
+      const { error: insertError } = await supabase.from("experiences").insert([
         {
-          title: title.trim(),
-          college: college.trim(),
-          branch: branch.trim(),
-          caption: caption.trim(),
-          rating,
+          company: title.trim(),
+          college: userCollege, // Auto-filled
+          branch: userBranch, // Auto-filled
+          description: caption.trim(),
+          difficulty: rating,
           image_url: publicUrl,
           user_id: user.id,
-          // 👇 NEW FIELDS ADDED HERE
-          author_name: user.fullName,
-          author_email: user.primaryEmailAddress?.emailAddress,
-          author_image: user.imageUrl,
+          username: userName,
+          user_avatar: userAvatar,
         },
       ]);
 
       if (insertError) throw insertError;
 
       Alert.alert("Success", "Experience shared!");
-
-      // Reset
       setTitle("");
-      setCollege("");
-      setBranch("");
       setCaption("");
       setRating(3);
       setImage(null);
@@ -167,7 +158,7 @@ export default function Create() {
           <Ionicons
             name={i <= rating ? "star" : "star-outline"}
             size={32}
-            color={i <= rating ? "#f4b400" : COLORS.textSecondary}
+            color={i <= rating ? "#f4b400" : theme.textSecondary}
           />
         </TouchableOpacity>,
       );
@@ -177,7 +168,7 @@ export default function Create() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: theme.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
@@ -202,61 +193,16 @@ export default function Create() {
                 <Ionicons
                   name="briefcase-outline"
                   size={20}
-                  color={COLORS.textSecondary}
+                  color={theme.textSecondary}
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g. Amazon, Google, TCS"
-                  placeholderTextColor={COLORS.placeholderText}
+                  placeholder="e.g. Amazon, Google"
+                  placeholderTextColor={theme.placeholderText}
                   value={title}
                   onChangeText={setTitle}
                 />
-              </View>
-            </View>
-
-            {/* COLLEGE & BRANCH ROW */}
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>
-                  College <Text style={{ color: "red" }}>*</Text>
-                </Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="school-outline"
-                    size={20}
-                    color={COLORS.textSecondary}
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="NSUT"
-                    placeholderTextColor={COLORS.placeholderText}
-                    value={college}
-                    onChangeText={setCollege}
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>
-                  Branch <Text style={{ color: "red" }}>*</Text>
-                </Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="hardware-chip-outline"
-                    size={20}
-                    color={COLORS.textSecondary}
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="CSE/IT"
-                    placeholderTextColor={COLORS.placeholderText}
-                    value={branch}
-                    onChangeText={setBranch}
-                  />
-                </View>
               </View>
             </View>
 
@@ -281,7 +227,7 @@ export default function Create() {
                     <Ionicons
                       name="image-outline"
                       size={40}
-                      color={COLORS.textSecondary}
+                      color={theme.textSecondary}
                     />
                     <Text style={styles.placeholderText}>Tap to upload</Text>
                   </View>
@@ -289,7 +235,7 @@ export default function Create() {
               </TouchableOpacity>
             </View>
 
-            {/* REVIEW */}
+            {/* DESCRIPTION */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>
                 Your Experience <Text style={{ color: "red" }}>*</Text>
@@ -297,7 +243,7 @@ export default function Create() {
               <TextInput
                 style={styles.textArea}
                 placeholder="What questions were asked? Any tips?"
-                placeholderTextColor={COLORS.placeholderText}
+                placeholderTextColor={theme.placeholderText}
                 value={caption}
                 onChangeText={setCaption}
                 multiline
@@ -310,13 +256,13 @@ export default function Create() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color={COLORS.white} />
+                <ActivityIndicator color="#fff" />
               ) : (
                 <>
                   <Ionicons
                     name="cloud-upload-outline"
                     size={20}
-                    color={COLORS.white}
+                    color="#fff"
                     style={styles.buttonIcon}
                   />
                   <Text style={styles.buttonText}>Post Experience</Text>

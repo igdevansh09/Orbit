@@ -1,28 +1,36 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import COLORS from "../../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useColorScheme } from "react-native";
+import { Colors } from "../../constants/colors";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+
+  // 1. Get the current system theme (light or dark)
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
+        // 2. Apply dynamic theme colors
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textSecondary,
         headerTitleStyle: {
-          color: COLORS.textPrimary,
+          color: theme.textPrimary,
           fontWeight: "600",
         },
         headerShadowVisible: false,
         tabBarStyle: {
-          backgroundColor: COLORS.cardBackground,
+          backgroundColor: theme.cardBackground, // Changes with theme
           borderTopWidth: 1,
-          borderTopColor: COLORS.border,
+          borderTopColor: theme.border,
           paddingTop: 5,
-          paddingBottom: insets.bottom,
-          height: 60 + insets.bottom,
+          // Handle safe area for iPhone X and newer
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          height: 60 + (insets.bottom > 0 ? insets.bottom : 10),
         },
       }}
     >
@@ -38,7 +46,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="create"
         options={{
-          title: "Create",
+          title: "Share",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="add-circle-outline" size={size} color={color} />
           ),
