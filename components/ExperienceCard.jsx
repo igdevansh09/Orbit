@@ -10,6 +10,8 @@ import {
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import Autolink from "react-native-autolink"; // <--- 1. IMPORT THIS
+
 import { useAuthStore } from "../store/authStore";
 import { supabase } from "../lib/supabase";
 import { Colors } from "../constants/colors";
@@ -45,12 +47,9 @@ export default function ExperienceCard({
             // 1. Try to Delete Image (Best Effort)
             if (item.image_url) {
               try {
-                // Extract path: "user_id/timestamp.jpg"
-                // URL format: .../experience-uploads/user_id/filename.jpg
                 const pathParts = item.image_url.split("experience-uploads/");
                 if (pathParts.length > 1) {
                   const filePath = pathParts[1];
-                  console.log("Deleting image at:", filePath);
                   await supabase.storage
                     .from("experience-uploads")
                     .remove([filePath]);
@@ -60,25 +59,17 @@ export default function ExperienceCard({
               }
             }
 
-            // 2. Delete Database Record (Critical)
+            // 2. Delete Database Record
             const { error } = await supabase
               .from("experiences")
               .delete()
               .eq("id", item.id);
 
-            if (error) {
-              console.error("Supabase Delete Error:", error);
-              throw error;
-            }
+            if (error) throw error;
 
-            console.log("Post deleted successfully");
-
-            // 3. Refresh UI
             if (onDeleteSuccess) {
               onDeleteSuccess(item.id);
             } else {
-              // If on Home screen, we might not have this callback,
-              // so we can't refresh list instantly without context refresh.
               Alert.alert("Success", "Post deleted. Pull to refresh.");
             }
           } catch (error) {
@@ -92,19 +83,16 @@ export default function ExperienceCard({
     ]);
   };
 
-  // --- EDIT LOGIC (Fixed Params) ---
+  // --- EDIT LOGIC ---
   const handleEdit = () => {
-    console.log("Navigating to edit:", item.id);
-
     router.push({
       pathname: "/create",
       params: {
         isEdit: "true",
         id: item.id,
-        // Pass ALL fields so they populate correctly
         initialCompany: item.company,
         initialRole: item.role || "",
-        initialCategory: item.category || "Interview", // <--- ADDED THIS
+        initialCategory: item.category || "Interview",
         initialReview: item.description,
         initialDifficulty: item.difficulty?.toString(),
         initialImage: item.image_url || "",
@@ -113,6 +101,13 @@ export default function ExperienceCard({
   };
 
   const styles = useMemo(() => getStyles(theme), [theme]);
+
+  // Logic to truncate text for "Read More"
+  const fullText = item.description || "";
+  const displayText =
+    expanded || fullText.length <= DESCRIPTION_LIMIT
+      ? fullText
+      : `${fullText.substring(0, DESCRIPTION_LIMIT)}...`;
 
   return (
     <View style={styles.card}>
@@ -129,12 +124,13 @@ export default function ExperienceCard({
           <View>
             <Text style={styles.username}>{item.username}</Text>
             <Text style={styles.meta}>
-              {item.branch} • {item.college}
+              {/* {item.college} • */}
+              {item.branch}
             </Text>
           </View>
         </View>
 
-        {/* ACTIONS (Only visible if Owner AND Not ReadOnly) */}
+        {/* ACTIONS */}
         {isOwner && !readOnly && (
           <View style={styles.actions}>
             <TouchableOpacity onPress={handleEdit} style={styles.actionBtn}>
@@ -155,7 +151,6 @@ export default function ExperienceCard({
         <View style={styles.titleRow}>
           <Text style={styles.company}>{item.company}</Text>
         </View>
-        {/* Role & Category Line */}
         <Text style={styles.role}>
           {item.category || "Interview"} • {item.role || "Role N/A"}
         </Text>
@@ -171,15 +166,19 @@ export default function ExperienceCard({
           ))}
         </View>
 
-        <Text style={styles.description}>
-          {expanded
-            ? item.description
-            : item.description.length > DESCRIPTION_LIMIT
-              ? `${item.description.substring(0, DESCRIPTION_LIMIT)}...`
-              : item.description}
-        </Text>
+        {/* --- AUTOLINK COMPONENT (Clickable Links) --- */}
+        <Autolink
+          text={displayText}
+          email
+          url
+          phone="sms" // Allows clicking phone numbers to SMS
+          selectable={true} // Allows copying
+          component={Text} // Renders as native Text
+          style={styles.description}
+          linkStyle={{ color: theme.primary, textDecorationLine: "underline" }}
+        />
 
-        {item.description.length > DESCRIPTION_LIMIT && (
+        {fullText.length > DESCRIPTION_LIMIT && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
             <Text style={styles.readMore}>
               {expanded ? "Show Less" : "Read More"}

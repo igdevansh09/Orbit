@@ -44,6 +44,12 @@
       "eas": {
         "projectId": "912c1363-8d8a-46b2-b843-c1a9be35e6e9"
       }
+    },
+    "notification": {
+      "icon": "./assets/images/notification-icon.png",
+      "color": "#6200EE",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Orbit Update"
     }
   }
 }

@@ -5,7 +5,7 @@ export const getProfileStyles = (COLORS) =>
     container: {
       flex: 1,
       backgroundColor: COLORS.background,
-      paddingTop: 30,
+      paddingTop: 50,
     },
     // --- HEADER STYLES ---
     headerContainer: {
