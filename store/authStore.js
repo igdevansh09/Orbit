@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
 import { decode } from "base64-arraybuffer";
+import * as Linking from "expo-linking";
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -130,11 +131,9 @@ export const useAuthStore = create((set, get) => ({
   resetPassword: async (email) => {
     set({ isLoading: true });
     try {
-      // 1. Get the correct redirect URL for your environment (Expo Go vs Production)
+      // Generates a link like exp://.../reset-password
       const redirectUrl = Linking.createURL("/reset-password");
-      console.log("Redirecting to:", redirectUrl); // Check your console for this URL!
 
-      // 2. Send the email with this dynamic URL
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
@@ -143,7 +142,113 @@ export const useAuthStore = create((set, get) => ({
       set({ isLoading: false });
       return { success: true };
     } catch (error) {
-      // ... error handling
+      set({ isLoading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  deleteAccount: async () => {
+    const { user } = get();
+    if (!user) return { success: false, error: "No user logged in" };
+
+    set({ isLoading: true });
+
+    try {
+      const userId = user.id;
+
+      // --- HELPER: Delete all files in a specific bucket folder ---
+      const deleteUserFolder = async (bucketName) => {
+        // 1. List all files in the folder named after the user's ID
+        const { data: files, error: listError } = await supabase.storage
+          .from(bucketName)
+          .list(userId);
+
+        if (listError) {
+          console.log(
+            `Log: No folder found in ${bucketName} or error listing.`,
+          );
+          return;
+        }
+
+        if (files && files.length > 0) {
+          // 2. Construct the full paths (e.g., "user_id/image1.jpg")
+          const pathsToDelete = files.map((file) => `${userId}/${file.name}`);
+
+          // 3. Delete them
+          const { error: deleteError } = await supabase.storage
+            .from(bucketName)
+            .remove(pathsToDelete);
+
+          if (deleteError)
+            console.error(`Error emptying ${bucketName}:`, deleteError);
+        }
+      };
+
+      // --- STEP 1: Delete Images from Storage ---
+      // We run these in parallel for speed
+      await Promise.all([
+        deleteUserFolder("avatars"), // Delete Profile Pics
+        deleteUserFolder("experience-uploads"), // Delete Post Screenshots
+      ]);
+
+      // --- STEP 2: Delete User & Data from Database ---
+      // This calls the SQL function we created earlier
+      const { error: rpcError } = await supabase.rpc("delete_user");
+      if (rpcError) throw rpcError;
+
+      // --- STEP 3: Cleanup Local State ---
+      await supabase.auth.signOut();
+      set({ session: null, user: null, token: null, isLoading: false });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Delete account error:", error);
+      set({ isLoading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // 1. Send the 6-Digit Code
+  sendRecoveryCode: async (email) => {
+    set({ isLoading: true });
+    try {
+      // We use signInWithOtp. If they verify, they get logged in.
+      // Once logged in, they can change their password.
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false }, // Don't sign up new users here
+      });
+
+      if (error) throw error;
+      set({ isLoading: false });
+      return { success: true };
+    } catch (error) {
+      set({ isLoading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // 2. Verify Code & Log In
+  verifyRecoveryCode: async (email, code) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "email",
+      });
+
+      if (error) throw error;
+
+      // Successful verify = User is now Logged In!
+      set({
+        session: data.session,
+        user: data.user,
+        token: data.session.access_token,
+        isLoading: false,
+      });
+      return { success: true };
+    } catch (error) {
       set({ isLoading: false });
       return { success: false, error: error.message };
     }

@@ -8,15 +8,16 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react"; // Added useCallback
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router"; // Added useFocusEffect
 
 // Imports
 import { getHomeStyles } from "../../assets/styles/home.styles";
 import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
 
-// --- 1. SUB-COMPONENT: Feed Card ---
+// --- 1. SUB-COMPONENT: Feed Card (No changes here) ---
 const FeedCard = ({ item, theme, styles }) => {
   const [expanded, setExpanded] = useState(false);
   const CAPTION_LIMIT = 100;
@@ -40,7 +41,6 @@ const FeedCard = ({ item, theme, styles }) => {
       {/* HEADER: User Info */}
       <View style={styles.bookHeader}>
         <View style={styles.userInfo}>
-          {/* Avatar: Uses Saved Post Avatar OR Fallback */}
           <Image
             source={{
               uri:
@@ -52,10 +52,7 @@ const FeedCard = ({ item, theme, styles }) => {
             transition={500}
           />
           <View>
-            {/* 1. AUTHOR NAME */}
             <Text style={styles.username}>{item.username || "Anonymous"}</Text>
-
-            {/* 2. COLLEGE & BRANCH */}
             <Text
               style={{
                 fontSize: 12,
@@ -70,7 +67,7 @@ const FeedCard = ({ item, theme, styles }) => {
         </View>
       </View>
 
-      {/* IMAGE (If available) */}
+      {/* IMAGE */}
       {item.image_url && (
         <View style={styles.bookImageContainer}>
           <Image
@@ -148,9 +145,13 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    fetchExperiences();
-  }, []);
+  // --- KEY FIX: useFocusEffect instead of useEffect ---
+  // This triggers every time you navigate back to this tab
+  useFocusEffect(
+    useCallback(() => {
+      fetchExperiences();
+    }, []),
+  );
 
   if (loading) {
     return (
@@ -185,7 +186,10 @@ export default function Home() {
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Orbit <Ionicons name="rocket-outline" size={24} color={theme.primary} /></Text>
+            <Text style={styles.headerTitle}>
+              Orbit{" "}
+              <Ionicons name="rocket-outline" size={24} color={theme.primary} />
+            </Text>
             <Text style={styles.headerSubtitle}>
               Discover interview insights from the community
             </Text>

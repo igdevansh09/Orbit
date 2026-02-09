@@ -13,7 +13,6 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 
 // Imports
 import { getProfileStyles } from "../../assets/styles/profile.styles";
@@ -101,10 +100,12 @@ const ProfileFeedCard = ({ item, user, styles, theme }) => {
 
 // --- 2. MAIN COMPONENT ---
 export default function Profile() {
-  const { user, logout, uploadAvatar, isLoading } = useAuthStore();
+  const { user, logout, uploadAvatar, deleteAccount, isLoading } =
+    useAuthStore();
   const [experiences, setExperiences] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [uploading, setUploading] = useState(false); // Local loading state for avatar
+  const [uploading, setUploading] = useState(false);
+  const router = useRouter();
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -139,7 +140,28 @@ export default function Profile() {
     await logout();
   };
 
-  // --- AVATAR UPLOAD LOGIC ---
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure? This action cannot be undone and you will lose all your data.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const res = await deleteAccount();
+            if (res.success) {
+              router.replace("/");
+            } else {
+              Alert.alert("Error", res.error);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const handleAvatarPick = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -219,10 +241,34 @@ export default function Profile() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Ionicons name="log-out-outline" size={20} color={theme.white} />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
+      {/* --- FIXED BUTTON LAYOUT --- */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          gap: 12, // Spacing between buttons
+        }}
+      >
+        <TouchableOpacity
+          style={[styles.logoutButton, { flex: 1, marginTop: 0 }]} // flex:1 ensures equal width
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={20} color={theme.white} />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.logoutButton,
+            { backgroundColor: "#ff4444", flex: 1, marginTop: 0 }, // Removed extra marginTop
+          ]}
+          onPress={handleDeleteAccount}
+        >
+          <Ionicons name="trash-bin-outline" size={20} color="white" />
+          <Text style={styles.logoutText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+      {/* ------------------------- */}
 
       <View style={styles.sectionTitleContainer}>
         <Text style={styles.sectionTitle}>Your Contributions 📚</Text>
