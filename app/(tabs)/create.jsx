@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -48,6 +48,9 @@ export default function Create() {
   const [imageBase64, setImageBase64] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Use ref to track if we've loaded edit data - THIS IS THE KEY FIX
+  const hasLoadedEditData = useRef(false);
+
   const CATEGORIES = ["Interview", "OA", "Internship"];
 
   // --- RESET FORM HELPER ---
@@ -61,14 +64,15 @@ export default function Create() {
     setRating(3);
     setImage(null);
     setImageBase64(null);
+    hasLoadedEditData.current = false;
   };
 
-  // --- FOCUS EFFECT (The Fix) ---
+  // --- FOCUS EFFECT - COMPLETELY REWRITTEN ---
   useFocusEffect(
     useCallback(() => {
-      // FIX: We only check primitives (strings), not the whole 'params' object
-      // This prevents the form from resetting while you type
-      if (params.isEdit === "true") {
+      // Case 1: Edit Mode - Load data ONCE
+      if (params.isEdit === "true" && params.id && !hasLoadedEditData.current) {
+        hasLoadedEditData.current = true; // Mark as loaded
         setIsEditMode(true);
         setPostId(params.id);
         setCompany(params.initialCompany || "");
@@ -79,11 +83,18 @@ export default function Create() {
           params.initialDifficulty ? parseInt(params.initialDifficulty) : 3,
         );
         setImage(params.initialImage || null);
-      } else {
-        // Only reset if we are NOT in edit mode (Clean slate for new posts)
+      }
+      // Case 2: Coming from profile/home - Reset everything
+      else if (params.isEdit !== "true") {
         resetForm();
       }
-    }, [params.isEdit, params.id]), // <--- CRITICAL FIX: Only run if these specific values change
+
+      // Cleanup when leaving screen
+      return () => {
+        // Reset the ref when component unmounts
+        hasLoadedEditData.current = false;
+      };
+    }, [params.isEdit]), // Only depend on isEdit flag
   );
 
   // --- IMAGE PICKER ---
@@ -170,7 +181,32 @@ export default function Create() {
           .eq("id", postId);
 
         if (error) throw error;
-        Alert.alert("Success", "Experience Updated!");
+
+        // Show success message
+        Alert.alert("Success", "Experience Updated!", [
+          {
+            text: "OK",
+            onPress: () => {
+              // CRITICAL: Reset form immediately
+              resetForm();
+
+              // Clear ALL router params
+              router.setParams({
+                isEdit: undefined,
+                id: undefined,
+                initialCompany: undefined,
+                initialRole: undefined,
+                initialCategory: undefined,
+                initialReview: undefined,
+                initialDifficulty: undefined,
+                initialImage: undefined,
+              });
+
+              // Navigate to profile to see updated post
+              router.push("/(tabs)/profile");
+            },
+          },
+        ]);
       } else {
         // CREATE
         const { error } = await supabase.from("experiences").insert([
@@ -185,13 +221,20 @@ export default function Create() {
         ]);
 
         if (error) throw error;
-        Alert.alert("Success", "Experience Shared!");
-      }
 
-      // 5. CLEANUP (Crucial Step)
-      resetForm(); // Wipe state manually
-      router.setParams({}); // Clear URL params so they don't persist
-      router.replace("/(tabs)/"); // Go Home
+        Alert.alert("Success", "Experience Shared!", [
+          {
+            text: "OK",
+            onPress: () => {
+              // Reset form
+              resetForm();
+
+              // Navigate home
+              router.push("/(tabs)/");
+            },
+          },
+        ]);
+      }
     } catch (error) {
       Alert.alert("Error", error.message);
     } finally {
@@ -227,6 +270,7 @@ export default function Create() {
       <ScrollView
         contentContainerStyle={styles.container}
         style={styles.scrollViewStyle}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.card}>
           <View style={styles.header}>
@@ -330,7 +374,14 @@ export default function Create() {
             {/* IMAGE */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>
-                Screenshot / Proof <Text style={{ color: "red" }}>*</Text>
+                Screenshot / Proof{" "}
+                {!isEditMode && <Text style={{ color: "red" }}>*</Text>}
+                {isEditMode && (
+                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+                    {" "}
+                    (Optional - tap to change)
+                  </Text>
+                )}
               </Text>
               <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
                 {image ? (
@@ -362,11 +413,13 @@ export default function Create() {
                 textAlignVertical="top"
                 style={[
                   styles.input,
+                  styles.textArea,
                   {
                     height: "auto",
                     minHeight: 120,
                     paddingTop: 12,
                     paddingBottom: 12,
+                    paddingRight: 12,
                   },
                 ]}
               />
