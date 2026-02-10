@@ -92,7 +92,7 @@ export default function Home() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, {paddingTop: StatusBar.currentHeight || 0}]}>
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
       />
@@ -121,13 +121,13 @@ export default function Home() {
             </View>
 
             {/* Notification / Profile Placeholder */}
-            <TouchableOpacity style={styles.iconBtn}>
+            {/* <TouchableOpacity style={styles.iconBtn}>
               <Ionicons
                 name="notifications-outline"
                 size={24}
                 color={theme.textPrimary}
               />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           {/* SEARCH BAR */}
