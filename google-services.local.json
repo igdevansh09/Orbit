@@ -1,0 +1,16 @@
+
+/*
+STEPS TO GET THE GOOGLE-SERVICES.JSON FILE FROM FIREBASE:
+
+1. Go to the Firebase Console (https://console.firebase.google.com/).
+2. Select your project. If you haven't created one, click "Add project" and follow the setup.
+3. Click the "Settings" gear icon in the left sidebar and select "Project settings".
+4. Scroll down to the "Your apps" section.
+5. If you haven't added an Android app yet:
+   - Click the Android icon (or "Add app").
+   - Enter your Android package name (found in your app's build.gradle).
+   - Click "Register app".
+6. Once the app is registered, you will see a button labeled "Download google-services.json".
+7. Click the button to download the file.
+8. Move the downloaded file into your project's 'app' directory (or the path specified in your local environment).
+*/

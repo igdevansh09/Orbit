@@ -264,7 +264,7 @@ export default function Create() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.background }}
+      style={{ flex: 1, backgroundColor: theme.background, paddingTop: 10 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
