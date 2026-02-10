@@ -83,7 +83,7 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // --- 1. REGISTER ---
+  // --- 1. REGISTER (WITH OTP VERIFICATION) ---
   register: async (
     username,
     email,
@@ -94,58 +94,71 @@ export const useAuthStore = create((set, get) => ({
   ) => {
     set({ isLoading: true });
 
-    // 1. Sign Up
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username,
-          college,
-          branch,
+    try {
+      // 1. Sign Up with email confirmation required
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: undefined, // Prevent auto-login
+          data: {
+            username,
+            college,
+            branch,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
+      if (error) throw error;
+
+      // Note: User will NOT be logged in yet - they need to verify email first
+      // Session will be null until they verify the OTP
+      set({ isLoading: false });
+      return { success: true, requiresVerification: true };
+    } catch (error) {
       set({ isLoading: false });
       return { success: false, error: error.message };
     }
+  },
 
-    let user = data.user;
-    let session = data.session;
+  // --- NEW: Verify Signup OTP ---
+  verifySignupOtp: async (email, token) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "signup",
+      });
 
-    // 2. Upload Initial Avatar (if provided)
-    if (session && user && avatarBase64) {
-      const fileName = `${user.id}/${Date.now()}.jpg`;
+      if (error) throw error;
 
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, decode(avatarBase64), {
-          contentType: "image/jpeg",
-        });
-
-      if (!uploadError) {
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
-        const { data: updatedData } = await supabase.auth.updateUser({
-          data: { avatar_url: publicUrl },
-        });
-
-        if (updatedData.user) user = updatedData.user;
-      }
-    }
-
-    if (session) {
-      set({ session, user, token: session.access_token, isLoading: false });
-      // TRIGGER NOTIFICATION SETUP
-      get().registerForPushNotificationsAsync(user.id);
-    } else {
+      // After verification, user can login
       set({ isLoading: false });
+      return { success: true };
+    } catch (error) {
+      set({ isLoading: false });
+      return { success: false, error: error.message };
     }
-    return { success: true };
+  },
+
+  // --- NEW: Resend Signup OTP ---
+  resendSignupOtp: async (email) => {
+    set({ isLoading: true });
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+
+      if (error) throw error;
+
+      set({ isLoading: false });
+      return { success: true };
+    } catch (error) {
+      set({ isLoading: false });
+      return { success: false, error: error.message };
+    }
   },
 
   // --- 2. LOGIN ---

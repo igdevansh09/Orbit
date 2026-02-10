@@ -56,7 +56,24 @@ export default function Signup() {
       branch,
     );
 
-    if (!result.success) {
+    if (result.success && result.requiresVerification) {
+      // Navigate to verification screen
+      Alert.alert(
+        "Check Your Email",
+        "We've sent a verification code to your email. Please check your inbox.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              router.push({
+                pathname: "/verify-email",
+                params: { email: cleanEmail },
+              });
+            },
+          },
+        ],
+      );
+    } else if (!result.success) {
       Alert.alert("Registration Failed", result.error);
     }
   };
@@ -191,7 +208,7 @@ export default function Signup() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Sign Up & Login</Text>
+                <Text style={styles.buttonText}>Sign Up</Text>
               )}
             </TouchableOpacity>
 

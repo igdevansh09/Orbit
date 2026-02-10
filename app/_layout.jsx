@@ -25,7 +25,8 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const inTabsGroup = segments[0] === "(tabs)";
-    const isResetPage = segments[0] === "reset-password"; // Check if we are on the reset page
+    const isResetPage = segments[0] === "reset-password";
+    const isVerifyEmailPage = segments[0] === "verify-email"; // NEW: Add verify-email check
 
     // LISTENER: Specifically catch the Password Recovery Event
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -44,9 +45,8 @@ export default function RootLayout() {
     if (session && inAuthGroup) {
       // If logged in but on Login/Signup -> Go Home
       router.replace("/(tabs)");
-    } else if (!session && !inAuthGroup && !isResetPage) {
-      // If NOT logged in, NOT in auth, and NOT resetting password -> Go Login
-      // This !isResetPage check is what saves you!
+    } else if (!session && !inAuthGroup && !isResetPage && !isVerifyEmailPage) {
+      // If NOT logged in, NOT in auth, and NOT on special pages -> Go Login
       router.replace("/(auth)");
     }
 
