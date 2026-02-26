@@ -11,7 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "expo lint",
-    "eas-build-pre-install": "cp $GOOGLE_SERVICES_FILE ./google-services.json"
+    "eas-build-pre-install": "cp $GOOGLE_SERVICES_FILE ./google-services.json",
+    "build": "CI=1 expo export"
   },
   "jest": {
     "preset": "jest-expo",
