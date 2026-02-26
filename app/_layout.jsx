@@ -1,9 +1,4 @@
-import {
-  Slot,
-  useRouter,
-  useSegments,
-  useRootNavigationState,
-} from "expo-router";
+import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, ActivityIndicator, useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,7 +10,6 @@ export default function RootLayout() {
   const { session, checkAuth } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
-  const rootNavigationState = useRootNavigationState(); 
   const [isReady, setIsReady] = useState(false);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(null);
 
@@ -37,21 +31,9 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event) => {
-        if (event === "PASSWORD_RECOVERY") {
-          console.log("Password Recovery Event Detected!");
-          router.replace("/reset-password");
-        }
-      },
-    );
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []); 
+    if (!isReady) return;
 
-  useEffect(() => {
-    if (!isReady || !rootNavigationState?.key) return;
+    let authListenerSubscription = null;
 
     const handleRouting = async () => {
       const inAuthGroup = segments[0] === "(auth)";
@@ -61,11 +43,12 @@ export default function RootLayout() {
       const isOnboarding = segments[0] === "onboarding";
 
       let currentOnboardingStatus = hasSeenOnboarding;
-
-      if (currentOnboardingStatus === null) {
+      if (!currentOnboardingStatus) {
         const val = await AsyncStorage.getItem("@has_seen_onboarding");
         currentOnboardingStatus = val === "true";
-        if (currentOnboardingStatus) setHasSeenOnboarding(true);
+        if (currentOnboardingStatus) {
+          setHasSeenOnboarding(true);
+        }
       }
 
       if (!currentOnboardingStatus && !isOnboarding) {
@@ -86,7 +69,20 @@ export default function RootLayout() {
 
     handleRouting();
 
-  }, [session, segments, isReady, hasSeenOnboarding, rootNavigationState?.key]);
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+          console.log("Password Recovery Event Detected!");
+          router.replace("/reset-password");
+        }
+      },
+    );
+    authListenerSubscription = authListener.subscription;
+
+    return () => {
+      if (authListenerSubscription) authListenerSubscription.unsubscribe();
+    };
+  }, [session, segments, isReady, hasSeenOnboarding]);
 
   if (!isReady) {
     return (
