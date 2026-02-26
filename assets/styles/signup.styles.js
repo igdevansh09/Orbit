@@ -1,0 +1,99 @@
+import { StyleSheet, Platform } from "react-native";
+
+export const getSignupStyles = (COLORS) =>
+  StyleSheet.create({
+    container: {
+      flexGrow: 1,
+      backgroundColor: COLORS.background,
+      paddingHorizontal: 24,
+      paddingTop: Platform.OS === "ios" ? 80 : 60,
+      paddingBottom: 40,
+    },
+    header: {
+      alignItems: "flex-start",
+      marginBottom: 40,
+    },
+    title: {
+      fontSize: 36,
+      fontWeight: "800",
+      color: COLORS.primary,
+      marginBottom: 8,
+      letterSpacing: -1,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: COLORS.textSecondary,
+      fontWeight: "500",
+      lineHeight: 22,
+    },
+    formContainer: {
+      flex: 1,
+    },
+    inputGroup: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 13,
+      marginBottom: 10,
+      color: COLORS.textPrimary,
+      fontWeight: "700",
+      marginLeft: 4,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    inputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: COLORS.inputBackground,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      height: 60,
+    },
+    inputIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      height: "100%",
+      color: COLORS.textDark,
+      fontSize: 16,
+      fontWeight: "500",
+    },
+    eyeIcon: {
+      padding: 8,
+    },
+    button: {
+      backgroundColor: COLORS.primary,
+      borderRadius: 16,
+      height: 60,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 12,
+      shadowColor: COLORS.primary,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    buttonText: {
+      color: COLORS.white,
+      fontSize: 18,
+      fontWeight: "700",
+      letterSpacing: 0.5,
+    },
+    footer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      marginTop: 32,
+    },
+    footerText: {
+      color: COLORS.textSecondary,
+      marginRight: 6,
+      fontSize: 15,
+    },
+    link: {
+      color: COLORS.primary,
+      fontWeight: "800",
+      fontSize: 15,
+    },
+  });

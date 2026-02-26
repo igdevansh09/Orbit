@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "Orbit",
+    "slug": "orbit-nsut",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "orbit",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.igdevansh09.orbitnsut",
+      "googleServicesFile": "./google-services.json"
+
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#e8f5e9",
+          "dark": {
+            "image": "./assets/images/splash-icon.png",
+            "backgroundColor": "#051005"
+          }
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "912c1363-8d8a-46b2-b843-c1a9be35e6e9"
+      }
+    },
+    "notification": {
+      "icon": "./assets/images/notification-icon.png",
+      "color": "#6200EE",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Orbit Update"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/912c1363-8d8a-46b2-b843-c1a9be35e6e9"
+    }
+  }
+}
