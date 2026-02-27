@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import { Colors } from "../../constants/colors";
 import { getSignupStyles } from "../../assets/styles/signup.styles";
+import BranchSelector from "../../components/BranchSelector";
 
 export default function Signup() {
   const [username, setUsername] = useState("");
@@ -137,24 +138,13 @@ export default function Signup() {
             </View>
           </View>
 
+          {/* Replaced the broken TextInput entirely with the BranchSelector */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Branch</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="library"
-                size={22}
-                color={theme.primary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. CSAI, MAC, ECE"
-                placeholderTextColor={theme.placeholderText}
-                value={branch}
-                onChangeText={setBranch}
-                autoCapitalize="characters"
-              />
-            </View>
+            <BranchSelector
+              value={branch}
+              onChange={(selected) => setBranch(selected)}
+            />
           </View>
 
           <View style={styles.inputGroup}>

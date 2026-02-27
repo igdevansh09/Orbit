@@ -168,7 +168,7 @@ const router = useRouter();
               data={FILTERS}
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => item}
-              contentContainerStyle={{ gap: 8, paddingRight: 16 }}
+              contentContainerStyle={{ gap: 4, paddingRight: 16 }}
               renderItem={({ item }) => {
                 const isActive = selectedCategory === item;
                 return (

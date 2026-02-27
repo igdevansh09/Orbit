@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuthStore } from "../store/authStore";
 import { Colors } from "../constants/colors";
 
 export default function Onboarding() {
@@ -15,9 +15,16 @@ export default function Onboarding() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
+  // 1. Pull the action from your centralized store
+  const { completeOnboarding } = useAuthStore();
+
   const handleContinue = async () => {
     try {
-      await AsyncStorage.setItem("@has_seen_onboarding", "true");
+      // 2. Fire the action. The store updates memory and storage simultaneously.
+      await completeOnboarding();
+
+      // 3. Navigate away. (Note: Once we fix _layout.jsx, this explicit route
+      // push might become redundant, but it's safe to leave as a fallback.)
       router.replace("/(auth)/");
     } catch (error) {
       console.error("Error saving onboarding status:", error);
@@ -71,12 +78,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: "center", 
-    alignItems: "center", 
+    justifyContent: "center",
+    alignItems: "center",
   },
   contentWrapper: {
     width: "100%",
-    alignItems: "center", 
+    alignItems: "center",
   },
   iconContainer: {
     width: 120,
@@ -87,20 +94,20 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontSize: 42, 
+    fontSize: 42,
     fontWeight: "900",
     letterSpacing: -1,
     marginBottom: 16,
     lineHeight: 48,
-    textAlign: "center", 
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 17,
     fontWeight: "500",
     lineHeight: 26,
-    textAlign: "center", 
-    paddingHorizontal: 16, 
-    marginBottom: 48, 
+    textAlign: "center",
+    paddingHorizontal: 16,
+    marginBottom: 48,
   },
   button: {
     flexDirection: "row",

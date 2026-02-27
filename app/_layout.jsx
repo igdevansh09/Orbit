@@ -1,57 +1,78 @@
-import { Slot, useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
-import { View, ActivityIndicator, useColorScheme } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import "react-native-url-polyfill/auto";
+import {
+  Slot,
+  useRouter,
+  useSegments,
+  useRootNavigationState,
+} from "expo-router";
+import { useEffect } from "react";
+import {
+  View,
+  ActivityIndicator,
+  useColorScheme,
+  AppState,
+} from "react-native";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/authStore";
 import { Colors } from "../constants/colors";
 
 export default function RootLayout() {
-  const { session, checkAuth } = useAuthStore();
+  // 1. Pull ALL state directly from the single source of truth
+  const {
+    session,
+    checkAuth,
+    refreshSession,
+    hasSeenOnboarding,
+    isCheckingAuth,
+  } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(null);
+  const rootNavigationState = useRootNavigationState();
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
+  // 2. Initial Boot: Tell the store to do its job.
   useEffect(() => {
-    const init = async () => {
-      try {
-        await checkAuth();
-
-        const value = await AsyncStorage.getItem("@has_seen_onboarding");
-        setHasSeenOnboarding(value === "true");
-      } catch (error) {
-        console.error("Init error:", error);
-        setHasSeenOnboarding(false);
-      } finally {
-        setIsReady(true);
-      }
-    };
-    init();
+    checkAuth();
   }, []);
 
+  // 6. App State Listener: Refresh session when app comes to foreground
   useEffect(() => {
-    if (!isReady || hasSeenOnboarding === null) return;
+    const subscription = AppState.addEventListener("change", async (state) => {
+      if (state === "active" && session) {
+        console.log("📱 App resumed - refreshing session");
+        await refreshSession();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [session, refreshSession]);
+
+  // 3. The Master Routing Engine
+  useEffect(() => {
+    // ABORT routing if the store is still checking, onboarding is unknown, or tree hasn't mounted
+    if (
+      isCheckingAuth ||
+      hasSeenOnboarding === null ||
+      !rootNavigationState?.key
+    )
+      return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    const inTabsGroup = segments[0] === "(tabs)";
     const isResetPage = segments[0] === "reset-password";
     const isVerifyEmailPage = segments[0] === "verify-email";
     const isOnboarding = segments[0] === "onboarding";
 
+    // A. User hasn't seen onboarding
     if (!hasSeenOnboarding && !isOnboarding) {
       router.replace("/onboarding");
       return;
     }
 
-    
-    if (hasSeenOnboarding && session && inAuthGroup) {
-      router.replace("/(tabs)");
-      return;
-    }
+    // B. User saw onboarding, but is NOT logged in
     if (
       hasSeenOnboarding &&
       !session &&
@@ -63,26 +84,27 @@ export default function RootLayout() {
       router.replace("/(auth)");
       return;
     }
-  }, [session, segments, isReady, hasSeenOnboarding]);
 
+    // C. User saw onboarding AND is logged in
+    if (hasSeenOnboarding && session && inAuthGroup) {
+      router.replace("/(tabs)");
+      return;
+    }
+  }, [
+    session,
+    segments,
+    isCheckingAuth,
+    hasSeenOnboarding,
+    rootNavigationState?.key,
+  ]);
+
+  // 4. Edge-Case Auth Events (Password Recovery Deep Links)
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("Auth event:", event);
-
+      async (event) => {
         if (event === "PASSWORD_RECOVERY") {
           console.log("Password Recovery Event Detected!");
           router.replace("/reset-password");
-          return;
-        }
-
-        if (event === "SIGNED_IN" && newSession) {
-          console.log("User signed in");
-        }
-
-        if (event === "SIGNED_OUT") {
-          console.log("User signed out");
-          router.replace("/(auth)");
         }
       },
     );
@@ -90,9 +112,14 @@ export default function RootLayout() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []); 
+  }, []);
 
-  if (!isReady || hasSeenOnboarding === null) {
+  // 5. Loading State: Block UI until the store has exact answers
+  if (
+    isCheckingAuth ||
+    hasSeenOnboarding === null ||
+    !rootNavigationState?.key
+  ) {
     return (
       <View
         style={{

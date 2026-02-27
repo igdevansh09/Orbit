@@ -6,6 +6,7 @@ import { Platform, Alert } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -21,6 +22,16 @@ export const useAuthStore = create((set, get) => ({
   token: null,
   isLoading: false,
   isCheckingAuth: true,
+  hasSeenOnboarding: null,
+
+  completeOnboarding: async () => {
+    try {
+      await AsyncStorage.setItem("@has_seen_onboarding", "true");
+      set({ hasSeenOnboarding: true });
+    } catch (error) {
+      console.error("Error saving onboarding status:", error);
+    }
+  },
 
   registerForPushNotificationsAsync: async (userId) => {
     if (Platform.OS === "web") return;
@@ -89,7 +100,7 @@ export const useAuthStore = create((set, get) => ({
         email,
         password,
         options: {
-          emailRedirectTo: undefined, 
+          emailRedirectTo: undefined,
           data: {
             username,
             college,
@@ -171,23 +182,92 @@ export const useAuthStore = create((set, get) => ({
 
   checkAuth: async () => {
     try {
+      // 1. Restore onboarding status from storage FIRST
+      const onboardingStatus = await AsyncStorage.getItem(
+        "@has_seen_onboarding",
+      );
+      set({ hasSeenOnboarding: onboardingStatus === "true" });
+
+      // 2. Initial check on app boot - attempt to restore session
       const {
         data: { session },
+        error,
       } = await supabase.auth.getSession();
-      if (session) {
+
+      // 3. Handle session retrieval errors
+      if (error) {
+        console.warn("⚠️ Session retrieval error:", error);
+        await supabase.auth.signOut();
+        set({ session: null, user: null, token: null });
+      } else if (session) {
+        console.log("✅ Session restored from storage");
         set({ session, user: session.user, token: session.access_token });
         get().registerForPushNotificationsAsync(session.user.id);
+      } else {
+        console.log("ℹ️ No session found in storage");
       }
 
-      supabase.auth.onAuthStateChange((_event, session) => {
-        set({
-          session,
-          user: session?.user || null,
-          token: session?.access_token || null,
-        });
+      // 4. Setup global listener for real-time auth state changes
+      // This catches TOKEN_REFRESHED events and keeps the session fresh
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, newSession) => {
+        console.log("🛡️ [AuthStore] State Event Detected:", event);
+
+        switch (event) {
+          case "SIGNED_IN":
+            console.log("✅ User signed in");
+            set({
+              session: newSession,
+              user: newSession?.user || null,
+              token: newSession?.access_token || null,
+            });
+            if (newSession?.user?.id) {
+              get().registerForPushNotificationsAsync(newSession.user.id);
+            }
+            break;
+
+          case "TOKEN_REFRESHED":
+            console.log("🔄 Token refreshed successfully");
+            set({
+              session: newSession,
+              user: newSession?.user || null,
+              token: newSession?.access_token || null,
+            });
+            break;
+
+          case "SIGNED_OUT":
+          case "USER_DELETED":
+            console.log("🚪 User signed out or deleted");
+            set({ session: null, user: null, token: null });
+            break;
+
+          case "USER_UPDATED":
+            if (newSession?.user) {
+              console.log("👤 User info updated");
+              set({ user: newSession.user });
+            }
+            break;
+
+          default:
+            if (newSession) {
+              set({
+                session: newSession,
+                user: newSession.user,
+                token: newSession.access_token,
+              });
+            }
+        }
       });
+
+      // Return cleanup function
+      return () => {
+        if (subscription) {
+          subscription.unsubscribe();
+        }
+      };
     } catch (error) {
-      console.log("Auth check error:", error);
+      console.error("❌ Auth initialization failed:", error);
     } finally {
       set({ isCheckingAuth: false });
     }
@@ -196,6 +276,34 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     await supabase.auth.signOut();
     set({ session: null, user: null, token: null });
+  },
+
+  refreshSession: async () => {
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.refreshSession();
+
+      if (error) {
+        console.warn("❌ Session refresh failed:", error);
+        // If refresh fails, sign out the user
+        await supabase.auth.signOut();
+        set({ session: null, user: null, token: null });
+        return { success: false, error: error.message };
+      }
+
+      if (session) {
+        console.log("✅ Session refreshed successfully");
+        set({ session, user: session.user, token: session.access_token });
+        return { success: true };
+      }
+
+      return { success: false, error: "No session returned" };
+    } catch (error) {
+      console.error("❌ Unexpected error during session refresh:", error);
+      return { success: false, error: error.message };
+    }
   },
 
   resetPassword: async (email) => {
