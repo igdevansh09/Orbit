@@ -43,11 +43,17 @@ export const getLoginStyles = (COLORS) =>
     inputContainer: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: COLORS.inputBackground,
+      backgroundColor: COLORS.glassBackgroundDark,
       borderRadius: 16,
       paddingHorizontal: 16,
       height: 60,
-      // Removed the harsh 1px border. Relying on color contrast.
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      shadowColor: COLORS.shadowColorLight,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 2,
     },
     inputIcon: {
       marginRight: 12,

@@ -22,12 +22,17 @@ export default function TabLayout() {
         },
         headerShadowVisible: false,
         tabBarStyle: {
-          backgroundColor: theme.cardBackground, 
+          backgroundColor: theme.glassBackground,
           borderTopWidth: 1,
           borderTopColor: theme.border,
           paddingTop: 5,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           height: 60 + (insets.bottom > 0 ? insets.bottom : 10),
+          shadowColor: theme.shadowColor,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 8,
         },
       }}
     >

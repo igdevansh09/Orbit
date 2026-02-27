@@ -19,7 +19,11 @@ import { useRouter } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import { supabase } from "../../lib/supabase";
 import ExperienceCard from "../../components/ExperienceCard";
+import AnimatedFilterPill from "../../components/AnimatedFilterPill";
+import { ExperienceCardSkeleton } from "../../components/SkeletonLoader";
+import EmptyState from "../../components/EmptyState";
 import { Colors } from "../../constants/colors";
+import { getGlassmorphicHeaderStyle, getGlassmorphicInputStyle } from "../../lib/glassmorphism";
 
 export default function Home() {
   const [allExperiences, setAllExperiences] = useState([]);
@@ -163,36 +167,10 @@ const router = useRouter();
           </View>
 
           <View style={styles.filterContainer}>
-            <FlatList
-              horizontal
-              data={FILTERS}
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item}
-              contentContainerStyle={{ gap: 4, paddingRight: 16 }}
-              renderItem={({ item }) => {
-                const isActive = selectedCategory === item;
-                return (
-                  <TouchableOpacity
-                    onPress={() => setSelectedCategory(item)}
-                    style={[
-                      styles.chip,
-                      isActive && {
-                        backgroundColor: theme.primary,
-                        borderColor: theme.primary,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        isActive && { color: "#FFF", fontWeight: "bold" },
-                      ]}
-                    >
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
+            <AnimatedFilterPill
+              filters={FILTERS}
+              selectedFilter={selectedCategory}
+              onSelectFilter={setSelectedCategory}
             />
           </View>
 
@@ -206,24 +184,20 @@ const router = useRouter();
 
         {loading && allExperiences.length === 0 ? (
           <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color={theme.primary} />
+            {[...Array(3)].map((_, i) => (
+              <ExperienceCardSkeleton key={i} />
+            ))}
           </View>
         ) : filteredExperiences.length > 0 ? (
           filteredExperiences.map((item) => (
             <ExperienceCard key={item.id} item={item} readOnly={true} />
           ))
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="search-outline"
-              size={48}
-              color={theme.textSecondary}
-            />
-            <Text style={styles.emptyText}>No results found</Text>
-            <Text style={styles.emptySubText}>
-              Try a different keyword or category.
-            </Text>
-          </View>
+          <EmptyState
+            iconName="search-outline"
+            title="No results found"
+            subtitle="Try a different keyword or category."
+          />
         )}
       </ScrollView>
     </View>
@@ -287,13 +261,18 @@ const getStyles = (theme) =>
     searchContainer: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: theme.inputBackground,
+      backgroundColor: theme.glassBackgroundDark,
       borderRadius: 14,
       paddingHorizontal: 12,
       height: 52,
       borderWidth: 1,
       borderColor: theme.border,
       marginBottom: 16,
+      shadowColor: theme.shadowColorLight,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 2,
     },
     searchInput: {
       flex: 1,
@@ -305,20 +284,7 @@ const getStyles = (theme) =>
       flexDirection: "row",
       marginBottom: 12,
     },
-    chip: {
-      paddingVertical: 8,
-      paddingHorizontal: 18,
-      borderRadius: 24,
-      backgroundColor: theme.cardBackground,
-      borderWidth: 1,
-      borderColor: theme.border,
-      marginRight: 8,
-    },
-    chipText: {
-      fontSize: 14,
-      color: theme.textPrimary,
-      fontWeight: "500",
-    },
+
     resultCount: {
       fontSize: 13,
       color: theme.textSecondary,
@@ -326,22 +292,7 @@ const getStyles = (theme) =>
       marginLeft: 4,
       fontWeight: "500",
     },
-    emptyState: {
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 60,
-    },
-    emptyText: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: theme.textPrimary,
-      marginTop: 12,
-    },
-    emptySubText: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      marginTop: 4,
-    },
+
     loaderContainer: {
       alignItems: "center",
       justifyContent: "center",

@@ -44,10 +44,17 @@ export const getSignupStyles = (COLORS) =>
     inputContainer: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: COLORS.inputBackground,
+      backgroundColor: COLORS.glassBackgroundDark,
       borderRadius: 16,
       paddingHorizontal: 16,
       height: 60,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      shadowColor: COLORS.shadowColorLight,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 2,
     },
     inputIcon: {
       marginRight: 12,

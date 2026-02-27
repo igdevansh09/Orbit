@@ -64,10 +64,17 @@ export const getProfileStyles = (COLORS) =>
       fontWeight: "500",
     },
     metaBadge: {
-      backgroundColor: COLORS.inputBackground,
+      backgroundColor: COLORS.glassBackgroundDark,
       paddingHorizontal: 16,
       paddingVertical: 6,
-      borderRadius: 100, // Pill shape for metadata
+      borderRadius: 100,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      shadowColor: COLORS.shadowColorLight,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 1,
     },
     metaText: {
       fontSize: 13,
@@ -86,13 +93,18 @@ export const getProfileStyles = (COLORS) =>
       flex: 1,
       flexDirection: "row",
       paddingVertical: 14,
-      borderRadius: 100, // Pill shaped buttons
+      borderRadius: 100,
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
+      shadowColor: COLORS.shadowColorLight,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 1,
     },
     logoutButton: {
-      backgroundColor: "transparent",
+      backgroundColor: COLORS.glassBackgroundDark,
       borderColor: COLORS.border,
     },
     deleteButton: {
