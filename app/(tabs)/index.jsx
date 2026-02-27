@@ -25,8 +25,8 @@ export default function Home() {
   const [allExperiences, setAllExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-const { user } = useAuthStore();
-const router = useRouter();
+  const { user } = useAuthStore();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
@@ -168,7 +168,7 @@ const router = useRouter();
               data={FILTERS}
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => item}
-              contentContainerStyle={{ gap: 8, paddingRight: 16 }}
+              contentContainerStyle={{ gap: 4, paddingRight: 16 }}
               renderItem={({ item }) => {
                 const isActive = selectedCategory === item;
                 return (
@@ -251,7 +251,7 @@ const getStyles = (theme) =>
     },
     brandTitle: {
       fontSize: 38,
-      fontWeight: "900", 
+      fontWeight: "900",
       color: theme.primary,
       letterSpacing: -1.5,
       marginBottom: 4,
@@ -275,7 +275,7 @@ const getStyles = (theme) =>
       borderRadius: 24,
       backgroundColor: theme.inputBackground,
       borderWidth: 2,
-      borderColor: theme.background, 
+      borderColor: theme.background,
     },
     iconBtn: {
       padding: 8,
