@@ -18,73 +18,81 @@ export default function RootLayout() {
 
   useEffect(() => {
     const init = async () => {
-      await checkAuth();
       try {
+        await checkAuth();
+
         const value = await AsyncStorage.getItem("@has_seen_onboarding");
         setHasSeenOnboarding(value === "true");
       } catch (error) {
+        console.error("Init error:", error);
         setHasSeenOnboarding(false);
+      } finally {
+        setIsReady(true);
       }
-      setIsReady(true);
     };
     init();
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || hasSeenOnboarding === null) return;
 
-    let authListenerSubscription = null;
+    const inAuthGroup = segments[0] === "(auth)";
+    const inTabsGroup = segments[0] === "(tabs)";
+    const isResetPage = segments[0] === "reset-password";
+    const isVerifyEmailPage = segments[0] === "verify-email";
+    const isOnboarding = segments[0] === "onboarding";
 
-    const handleRouting = async () => {
-      const inAuthGroup = segments[0] === "(auth)";
-      const inTabsGroup = segments[0] === "(tabs)";
-      const isResetPage = segments[0] === "reset-password";
-      const isVerifyEmailPage = segments[0] === "verify-email";
-      const isOnboarding = segments[0] === "onboarding";
+    if (!hasSeenOnboarding && !isOnboarding) {
+      router.replace("/onboarding");
+      return;
+    }
 
-      let currentOnboardingStatus = hasSeenOnboarding;
-      if (!currentOnboardingStatus) {
-        const val = await AsyncStorage.getItem("@has_seen_onboarding");
-        currentOnboardingStatus = val === "true";
-        if (currentOnboardingStatus) {
-          setHasSeenOnboarding(true);
-        }
-      }
+    
+    if (hasSeenOnboarding && session && inAuthGroup) {
+      router.replace("/(tabs)");
+      return;
+    }
+    if (
+      hasSeenOnboarding &&
+      !session &&
+      !inAuthGroup &&
+      !isResetPage &&
+      !isVerifyEmailPage &&
+      !isOnboarding
+    ) {
+      router.replace("/(auth)");
+      return;
+    }
+  }, [session, segments, isReady, hasSeenOnboarding]);
 
-      if (!currentOnboardingStatus && !isOnboarding) {
-        router.replace("/onboarding");
-      } else if (currentOnboardingStatus && session && inAuthGroup) {
-        router.replace("/(tabs)");
-      } else if (
-        currentOnboardingStatus &&
-        !session &&
-        !inAuthGroup &&
-        !isResetPage &&
-        !isVerifyEmailPage &&
-        !isOnboarding
-      ) {
-        router.replace("/(auth)");
-      }
-    };
-
-    handleRouting();
-
+  useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, newSession) => {
+        console.log("Auth event:", event);
+
         if (event === "PASSWORD_RECOVERY") {
           console.log("Password Recovery Event Detected!");
           router.replace("/reset-password");
+          return;
+        }
+
+        if (event === "SIGNED_IN" && newSession) {
+          console.log("User signed in");
+        }
+
+        if (event === "SIGNED_OUT") {
+          console.log("User signed out");
+          router.replace("/(auth)");
         }
       },
     );
-    authListenerSubscription = authListener.subscription;
 
     return () => {
-      if (authListenerSubscription) authListenerSubscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
-  }, [session, segments, isReady, hasSeenOnboarding]);
+  }, []); 
 
-  if (!isReady) {
+  if (!isReady || hasSeenOnboarding === null) {
     return (
       <View
         style={{
