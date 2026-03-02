@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "orbit",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -16,8 +15,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.igdevansh09.orbitnsut",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.igdevansh09.orbitnsut"
     },
     "web": {
       "bundler": "metro",
@@ -31,19 +29,12 @@
         {
           "image": "./assets/images/splash-icon2.png",
           "resizeMode": "contain",
-          "backgroundColor": "#e8f5e9",
+          "imageWidth": 200,
+          "backgroundColor": "#ffffff",
           "dark": {
             "image": "./assets/images/splash-icon.png",
-            "backgroundColor": "#051005"
+            "backgroundColor": "#0d1117"
           }
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/notification-icon.png",
-          "color": "#6200EE",
-          "defaultMode": "default"
         }
       ]
     ],

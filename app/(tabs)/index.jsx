@@ -185,7 +185,7 @@ export default function Home() {
                     <Text
                       style={[
                         styles.chipText,
-                        isActive && { color: "#FFF", fontWeight: "bold" },
+                        isActive && { color: theme.white, fontWeight: "bold" },
                       ]}
                     >
                       {item}

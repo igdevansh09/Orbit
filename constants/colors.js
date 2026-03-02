@@ -1,32 +1,33 @@
-const FOREST_LIGHT = {
-  primary: "#4CAF50",
-  textPrimary: "#2e5a2e",
-  textSecondary: "#688f68",
-  textDark: "#1b361b",
-  placeholderText: "#767676",
-  background: "#e8f5e9",
-  cardBackground: "#f1f8f2",
-  inputBackground: "#f4faf5",
-  border: "#c8e6c9",
+const GITHUB_LIGHT = {
+  primary: "#24292f",
+  textPrimary: "#24292f",
+  textSecondary: "#57606a",
+  textDark: "#000000",
+  placeholderText: "#6e7781",
+  background: "#ffffff",
+  cardBackground: "#f6f8fa",
+  inputBackground: "#f6f8fa",
+  border: "#d0d7de",
   white: "#ffffff",
   black: "#000000",
 };
 
-const FOREST_DARK = {
-  primary: "#66BB6A", // Lighter green for dark mode contrast
-  textPrimary: "#E8F5E9", // Light greenish white
-  textSecondary: "#A5D6A7", // Soft green
-  textDark: "#FFFFFF", // White for headers
-  placeholderText: "#999999",
-  background: "#051005", // Very deep dark green (almost black)
-  cardBackground: "#1B2E1B", // Dark forest green
-  inputBackground: "#233823", // Slightly lighter for inputs
-  border: "#2E4D2E",
-  white: "#ffffff",
-  black: "#000000",
+const GITHUB_DARK = {
+  primary: "#e6edf3", // Light shade so icons are visible on black inputs
+  textPrimary: "#c9d1d9",
+  textSecondary: "#8b949e",
+  textDark: "#ffffff",
+  placeholderText: "#6e7681",
+  background: "#0d1117",
+  cardBackground: "#161b22",
+  inputBackground: "#010409",
+  border: "#30363d",
+  // THE FIX: Invert 'white' so text on light primary buttons becomes dark
+  white: "#0d1117",
+  black: "#ffffff",
 };
 
 export const Colors = {
-  light: FOREST_LIGHT,
-  dark: FOREST_DARK,
+  light: GITHUB_LIGHT,
+  dark: GITHUB_DARK,
 };

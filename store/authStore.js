@@ -2,19 +2,8 @@ import { create } from "zustand";
 import { supabase } from "../lib/supabase";
 import { decode } from "base64-arraybuffer";
 import * as Linking from "expo-linking";
-import { Platform, Alert } from "react-native";
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -33,70 +22,17 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  registerForPushNotificationsAsync: async (userId) => {
-    if (Platform.OS === "web") return;
-
-    if (!Device.isDevice) {
-      console.log("Must use physical device for Push Notifications");
-      return;
-    }
-
-    try {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== "granted") {
-        return;
-      }
-
-      const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ??
-        Constants?.easConfig?.projectId;
-
-      if (!projectId) {
-        console.log(
-          "Project ID not found. Did you run 'npx eas build:configure'?",
-        );
-      }
-
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: projectId,
-      });
-      const token = tokenData.data;
-      console.log("🔥 Push Token:", token);
-
-      if (token && userId) {
-        const { error } = await supabase.from("profiles").upsert({
-          id: userId,
-          expo_push_token: token,
-          updated_at: new Date(),
-        });
-
-        if (error) console.error("Error saving token to DB:", error);
-      }
-    } catch (error) {
-      console.error("Error getting push token:", error);
-    }
-  },
-
   register: async (
     username,
     email,
     password,
     college,
     branch,
-    avatarBase64,
   ) => {
     set({ isLoading: true });
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -122,7 +58,7 @@ export const useAuthStore = create((set, get) => ({
   verifySignupOtp: async (email, token) => {
     set({ isLoading: true });
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         email,
         token,
         type: "signup",
@@ -175,26 +111,21 @@ export const useAuthStore = create((set, get) => ({
       isLoading: false,
     });
 
-    get().registerForPushNotificationsAsync(data.user.id);
-
     return { success: true };
   },
 
   checkAuth: async () => {
     try {
-      // 1. Restore onboarding status from storage FIRST
       const onboardingStatus = await AsyncStorage.getItem(
         "@has_seen_onboarding",
       );
       set({ hasSeenOnboarding: onboardingStatus === "true" });
 
-      // 2. Initial check on app boot - attempt to restore session
       const {
         data: { session },
         error,
       } = await supabase.auth.getSession();
 
-      // 3. Handle session retrieval errors
       if (error) {
         console.warn("⚠️ Session retrieval error:", error);
         await supabase.auth.signOut();
@@ -202,13 +133,10 @@ export const useAuthStore = create((set, get) => ({
       } else if (session) {
         console.log("✅ Session restored from storage");
         set({ session, user: session.user, token: session.access_token });
-        get().registerForPushNotificationsAsync(session.user.id);
       } else {
         console.log("ℹ️ No session found in storage");
       }
 
-      // 4. Setup global listener for real-time auth state changes
-      // This catches TOKEN_REFRESHED events and keeps the session fresh
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((event, newSession) => {
@@ -222,9 +150,6 @@ export const useAuthStore = create((set, get) => ({
               user: newSession?.user || null,
               token: newSession?.access_token || null,
             });
-            if (newSession?.user?.id) {
-              get().registerForPushNotificationsAsync(newSession.user.id);
-            }
             break;
 
           case "TOKEN_REFRESHED":
@@ -260,7 +185,6 @@ export const useAuthStore = create((set, get) => ({
         }
       });
 
-      // Return cleanup function
       return () => {
         if (subscription) {
           subscription.unsubscribe();
@@ -287,7 +211,6 @@ export const useAuthStore = create((set, get) => ({
 
       if (error) {
         console.warn("❌ Session refresh failed:", error);
-        // If refresh fails, sign out the user
         await supabase.auth.signOut();
         set({ session: null, user: null, token: null });
         return { success: false, error: error.message };
@@ -415,7 +338,17 @@ export const useAuthStore = create((set, get) => ({
       if (oldAvatarUrl) {
         const path = oldAvatarUrl.split("/avatars/")[1];
         if (path) {
-          await supabase.storage.from("avatars").remove([path]);
+          const { error: removeError } = await supabase.storage
+            .from("avatars")
+            .remove([path]);
+          if (removeError) {
+            console.error(
+              "Storage delete failed. You are missing RLS policies:",
+              removeError.message,
+            );
+          } else {
+            console.log("Old avatar deleted successfully from storage.");
+          }
         }
       }
 
@@ -440,10 +373,66 @@ export const useAuthStore = create((set, get) => ({
 
       if (updateError) throw updateError;
 
+      const { error: syncError } = await supabase
+        .from("experiences")
+        .update({ user_avatar: publicUrl })
+        .eq("user_id", user.id);
+
+      if (syncError)
+        console.warn("Failed to sync avatar to old posts:", syncError);
+
       set({ user: updatedData.user, isLoading: false });
       return { success: true };
     } catch (error) {
       console.error("Avatar upload failed:", error);
+      set({ isLoading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  removeAvatar: async () => {
+    const { user } = get();
+    if (!user) return { success: false, error: "No user logged in" };
+
+    set({ isLoading: true });
+    try {
+      const oldAvatarUrl = user.user_metadata?.avatar_url;
+      if (oldAvatarUrl) {
+        const path = oldAvatarUrl.split("/avatars/")[1];
+        if (path) {
+          const { error: removeError } = await supabase.storage
+            .from("avatars")
+            .remove([path]);
+          if (removeError) {
+            console.error(
+              "Storage delete failed. You are missing RLS policies:",
+              removeError.message,
+            );
+          } else {
+            console.log("Old avatar deleted successfully from storage.");
+          }
+        }
+      }
+
+      const { data: updatedData, error: updateError } =
+        await supabase.auth.updateUser({
+          data: { avatar_url: null },
+        });
+
+      if (updateError) throw updateError;
+
+      const { error: syncError } = await supabase
+        .from("experiences")
+        .update({ user_avatar: null })
+        .eq("user_id", user.id);
+
+      if (syncError)
+        console.warn("Failed to remove avatar from old posts:", syncError);
+
+      set({ user: updatedData.user, isLoading: false });
+      return { success: true };
+    } catch (error) {
+      console.error("Avatar removal failed:", error);
       set({ isLoading: false });
       return { success: false, error: error.message };
     }

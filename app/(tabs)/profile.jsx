@@ -96,7 +96,7 @@ const ProfileFeedCard = ({ item, user, styles, theme }) => {
 };
 
 export default function Profile() {
-  const { user, logout, uploadAvatar, deleteAccount, isLoading } =
+  const { user, logout, uploadAvatar, deleteAccount, isLoading, removeAvatar } =
     useAuthStore();
   const [experiences, setExperiences] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -136,6 +136,27 @@ export default function Profile() {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleAvatarOptions = () => {
+    Alert.alert("Profile Photo", "What would you like to do?", [
+      { text: "Upload New Photo", onPress: handleAvatarPick },
+      {
+        text: "Remove Photo",
+        onPress: handleAvatarRemove,
+        style: "destructive",
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleAvatarRemove = async () => {
+    setUploading(true);
+    const res = await removeAvatar();
+    setUploading(false);
+    if (!res.success) {
+      Alert.alert("Error", res.error);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -192,7 +213,7 @@ export default function Profile() {
     <View>
       <View style={styles.headerContainer}>
         <TouchableOpacity
-          onPress={handleAvatarPick}
+          onPress={handleAvatarOptions}
           disabled={uploading}
           activeOpacity={0.8}
         >

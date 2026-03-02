@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import Autolink from "react-native-autolink";
 
 import { useAuthStore } from "../store/authStore";
@@ -22,7 +21,6 @@ export default function ExperienceCard({
   readOnly = false,
 }) {
   const { user } = useAuthStore();
-  const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
@@ -68,22 +66,6 @@ export default function ExperienceCard({
     ]);
   };
 
-  const handleEdit = () => {
-    router.push({
-      pathname: "/create",
-      params: {
-        isEdit: "true",
-        id: item.id,
-        initialCompany: item.company,
-        initialRole: item.role || "",
-        initialCategory: item.category || "Interview",
-        initialReview: item.description,
-        initialDifficulty: item.difficulty?.toString(),
-        initialImage: item.image_url || "",
-      },
-    });
-  };
-
   const styles = useMemo(() => getStyles(theme), [theme]);
 
   const fullText = item.description || "";
@@ -92,21 +74,37 @@ export default function ExperienceCard({
       ? fullText
       : `${fullText.substring(0, DESCRIPTION_LIMIT)}...`;
 
+  const displayUsername = item.is_anonymous
+    ? "Verified Student"
+    : item.username;
+  const displayAvatar = item.is_anonymous
+    ? `https://ui-avatars.com/api/?name=V+S&background=1E1E1E&color=fff`
+    : item.user_avatar ||
+      `https://ui-avatars.com/api/?name=${item.username}&background=random`;
+  const displayBranch = item.is_anonymous ? "NSUT" : item.branch;
+
+  const parseJsonArray = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const extractedQuestions = parseJsonArray(item.technical_questions);
+  const extractedTopics = parseJsonArray(item.dsa_topics);
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <Image
-            source={
-              item.user_avatar ||
-              `https://ui-avatars.com/api/?name=${item.username}&background=random`
-            }
-            style={styles.avatar}
-          />
+          <Image source={displayAvatar} style={styles.avatar} />
           <View>
-            <Text style={styles.username}>{item.username}</Text>
+            <Text style={styles.username}>{displayUsername}</Text>
             <Text style={styles.meta}>
-              {item.branch} •{" "}
+              {displayBranch} •{" "}
               {new Date(item.created_at).toLocaleDateString(undefined, {
                 month: "short",
                 day: "numeric",
@@ -118,15 +116,8 @@ export default function ExperienceCard({
         {isOwner && !readOnly && (
           <View style={styles.actions}>
             <TouchableOpacity
-              onPress={handleEdit}
-              style={styles.actionBtn}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <Ionicons name="pencil" size={20} color={theme.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={handleDelete}
-              style={[styles.actionBtn, { marginLeft: 16 }]}
+              style={styles.actionBtn}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
               <Ionicons name="trash-outline" size={20} color="#FF5252" />
@@ -142,8 +133,51 @@ export default function ExperienceCard({
           <View style={styles.pillTag}>
             <Text style={styles.pillText}>{item.category || "Interview"}</Text>
           </View>
+          <View
+            style={[styles.pillTag, { backgroundColor: theme.primary + "20" }]}
+          >
+            <Text style={styles.pillText}>
+              {item.drive_type || "On-Campus"}
+            </Text>
+          </View>
           <Text style={styles.roleText}>{item.role || "Role N/A"}</Text>
         </View>
+
+        {(item.cgpa_cutoff ||
+          item.rounds ||
+          item.extracted_rounds ||
+          item.allowed_branches) && (
+          <View style={{ marginBottom: 16 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 16,
+                marginBottom: item.allowed_branches ? 6 : 0,
+              }}
+            >
+              {item.cgpa_cutoff && (
+                <Text style={styles.metadataText}>
+                  <Ionicons name="school" size={14} /> CGPA: {item.cgpa_cutoff}+
+                </Text>
+              )}
+              {(item.rounds || item.extracted_rounds) && (
+                <Text style={styles.metadataText}>
+                  <Ionicons name="layers" size={14} /> Rounds:{" "}
+                  {item.extracted_rounds || item.rounds}
+                </Text>
+              )}
+            </View>
+
+            {item.allowed_branches && (
+              <Text
+                style={[styles.metadataText, { fontSize: 13, lineHeight: 20 }]}
+              >
+                <Ionicons name="git-branch" size={13} /> Branches:{" "}
+                {item.allowed_branches}
+              </Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.stars}>
           {[...Array(5)].map((_, i) => (
@@ -157,6 +191,37 @@ export default function ExperienceCard({
           ))}
         </View>
 
+        {(extractedQuestions.length > 0 || extractedTopics.length > 0) && (
+          <View style={styles.extractionContainer}>
+            {extractedTopics.length > 0 && (
+              <View style={styles.topicChips}>
+                {extractedTopics.map((topic, index) => (
+                  <View key={index} style={styles.topicPill}>
+                    <Text style={styles.topicText}>{topic}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {extractedQuestions.length > 0 && (
+              <View style={styles.questionsBlock}>
+                <Text style={styles.questionsHeader}>Questions Asked:</Text>
+                {extractedQuestions.map((q, index) => (
+                  <View key={index} style={styles.questionRow}>
+                    <View style={styles.bulletPoint} />
+                    <Text style={styles.questionText}>{q}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        <Text
+          style={[styles.questionsHeader, { marginTop: 12, marginBottom: 4 }]}
+        >
+          Experience Narrative:
+        </Text>
         <Autolink
           text={displayText}
           email
@@ -173,7 +238,7 @@ export default function ExperienceCard({
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
             <Text style={styles.readMore}>
-              {expanded ? "Show less" : "Read more"}
+              {expanded ? "Show less narrative" : "Read full narrative"}
             </Text>
           </TouchableOpacity>
         )}
@@ -198,7 +263,7 @@ const getStyles = (theme) =>
       marginBottom: 32,
       paddingBottom: 24,
       borderBottomWidth: 1,
-      borderBottomColor: theme.border, 
+      borderBottomColor: theme.border,
     },
     header: {
       flexDirection: "row",
@@ -213,7 +278,7 @@ const getStyles = (theme) =>
       flex: 1,
     },
     avatar: {
-      width: 48, 
+      width: 48,
       height: 48,
       borderRadius: 24,
       backgroundColor: theme.inputBackground,
@@ -271,26 +336,89 @@ const getStyles = (theme) =>
       fontWeight: "700",
       color: theme.textSecondary,
     },
+    metadataText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      fontWeight: "700",
+    },
     stars: {
       flexDirection: "row",
       marginBottom: 16,
     },
+    extractionContainer: {
+      backgroundColor: theme.inputBackground,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.primary,
+    },
+    topicChips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    topicPill: {
+      backgroundColor: theme.primary + "1A",
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: theme.primary + "4D",
+    },
+    topicText: {
+      color: theme.primary,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    questionsBlock: {
+      marginTop: 4,
+    },
+    questionsHeader: {
+      fontWeight: "800",
+      color: theme.textPrimary,
+      fontSize: 14,
+      marginBottom: 8,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    questionRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 6,
+    },
+    bulletPoint: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.textSecondary,
+      marginTop: 8,
+      marginRight: 10,
+    },
+    questionText: {
+      fontSize: 15,
+      color: theme.textPrimary,
+      fontWeight: "500",
+      flex: 1,
+      lineHeight: 22,
+    },
     description: {
-      fontSize: 17,
-      lineHeight: 26,
+      fontSize: 16,
+      lineHeight: 24,
       color: theme.textDark,
       fontWeight: "400",
     },
     readMore: {
-      color: theme.textSecondary,
+      color: theme.primary,
       fontWeight: "800",
       marginTop: 10,
-      fontSize: 15,
+      fontSize: 14,
     },
     postImage: {
       width: "100%",
       height: 260,
-      borderRadius: 24, 
+      borderRadius: 24,
       marginTop: 16,
       backgroundColor: theme.inputBackground,
     },
