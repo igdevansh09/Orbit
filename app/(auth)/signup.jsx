@@ -184,7 +184,7 @@ export default function Signup() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={theme.white} size="small" />
             ) : (
               <Text style={styles.buttonText}>Create Account</Text>
             )}

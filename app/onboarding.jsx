@@ -61,11 +61,11 @@ export default function Onboarding() {
           onPress={handleContinue}
           activeOpacity={0.8}
         >
-          <Text style={styles.buttonText}>Launch Application</Text>
+          <Text style={[styles.buttonText, { color: theme.white }]}>Launch Application</Text>
           <Ionicons
             name="arrow-forward"
             size={20}
-            color="#FFF"
+            color={theme.white}
             style={{ marginLeft: 8 }}
           />
         </TouchableOpacity>

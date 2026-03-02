@@ -126,9 +126,9 @@ export default function Login() {
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={theme.white} />
               ) : (
-                <Text style={styles.buttonText}>Login</Text>
+              <Text style={styles.buttonText}>Login</Text>
               )}
             </TouchableOpacity>
 
