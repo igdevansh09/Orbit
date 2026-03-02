@@ -4,7 +4,6 @@ Orbit
 An exclusive, high-signal community platform engineered for NSUT students. Stop relying on scattered WhatsApp groups. Orbit centralizes interview experiences, Online Assessment (OA) patterns, and internship strategies into a single, searchable feed.
 
 ## 📱 App Preview
-9457172589
 ### User Onboarding & Authentication
 
 <p align="center">
