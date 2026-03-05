@@ -268,8 +268,7 @@ export default function Home() {
           />
         }
         renderItem={({ item }) => (
-          // readOnly is false here so buttons show up!
-          <ExperienceCard item={item} readOnly={false} />
+          <ExperienceCard item={item} />
         )}
         onEndReached={() => {
           // Only paginate if we aren't heavily filtering

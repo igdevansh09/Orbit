@@ -19,12 +19,11 @@ import { Colors } from "../constants/colors";
 export default function ExperienceCard({
   item,
   onDeleteSuccess,
-  readOnly = false,
 }) {
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-  
+  const isOwner = user?.id === item.user_id;
   const [hasReported, setHasReported] = useState(false); // Add this
   const [expanded, setExpanded] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -191,7 +190,15 @@ export default function ExperienceCard({
         </View>
 
         <View style={styles.actions}>
-          {readOnly ? (
+          {isOwner ? (
+            <TouchableOpacity
+              onPress={handleDelete}
+              style={[styles.actionBtn, { marginLeft: 12 }]}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF5252" />
+            </TouchableOpacity>
+          ) : (
             <>
               <TouchableOpacity
                 onPress={handleBookmark}
@@ -216,14 +223,6 @@ export default function ExperienceCard({
                 />
               </TouchableOpacity>
             </>
-          ) : (
-            <TouchableOpacity
-              onPress={handleDelete}
-              style={[styles.actionBtn, { marginLeft: 12 }]}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <Ionicons name="trash-outline" size={20} color="#FF5252" />
-            </TouchableOpacity>
           )}
         </View>
       </View>

@@ -286,7 +286,6 @@ export default function Profile() {
         renderItem={({ item }) => (
           <ExperienceCard
             item={item}
-            readOnly={false}
             onDeleteSuccess={(id) => {
               setExperiences((prev) => prev.filter((post) => post.id !== id));
             }}
