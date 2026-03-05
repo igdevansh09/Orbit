@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import Autolink from "react-native-autolink";
 
 import { useAuthStore } from "../store/authStore";
@@ -23,11 +24,92 @@ export default function ExperienceCard({
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
-
+  
+  const [hasReported, setHasReported] = useState(false); // Add this
   const [expanded, setExpanded] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const DESCRIPTION_LIMIT = 120;
 
-  const isOwner = user?.id === item.user_id;
+  useEffect(() => {
+    if (!user || !item.id) return;
+    const checkBookmark = async () => {
+      const { data } = await supabase
+        .from("bookmarks")
+        .select("user_id")
+        .eq("experience_id", item.id)
+        .eq("user_id", user.id)
+        .single();
+      if (data) setIsSaved(true);
+    };
+    checkBookmark();
+  }, [item.id, user]);
+
+  const handleBookmark = async () => {
+    const previousState = isSaved;
+    setIsSaved(!isSaved);
+
+    if (!previousState) {
+      const { error } = await supabase
+        .from("bookmarks")
+        .insert({ user_id: user.id, experience_id: item.id });
+      if (error) {
+        setIsSaved(previousState);
+        console.error("Bookmark failed:", error);
+      }
+    } else {
+      const { error } = await supabase
+        .from("bookmarks")
+        .delete()
+        .match({ user_id: user.id, experience_id: item.id });
+      if (error) setIsSaved(previousState);
+    }
+  };
+
+  const handleReport = () => {
+    if (hasReported) {
+      Alert.alert(
+        "Already Reported",
+        "You have already flagged this post for review.",
+      );
+      return;
+    }
+
+    Alert.alert("Report Post", "Why are you reporting this experience?", [
+      { text: "Spam / Fake Data", onPress: () => submitReport("Spam") },
+      {
+        text: "Inappropriate Content",
+        onPress: () => submitReport("Inappropriate"),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const submitReport = async (reason) => {
+    const { error } = await supabase.from("reports").insert({
+      experience_id: item.id,
+      reporter_id: user.id,
+      reason: reason,
+    });
+
+    if (error) {
+      // 23505 is the exact Postgres error code for a Unique Constraint Violation
+      if (error.code === "23505") {
+        setHasReported(true);
+        Alert.alert(
+          "Already Reported",
+          "You have already flagged this post for review.",
+        );
+      } else {
+        Alert.alert("Error", "Could not submit report. Please try again.");
+      }
+    } else {
+      setHasReported(true);
+      Alert.alert(
+        "Reported",
+        "Thanks for keeping Orbit clean. We will review this post.",
+      );
+    }
+  };
 
   const handleDelete = () => {
     Alert.alert("Delete Post", "Are you sure? This action cannot be undone.", [
@@ -41,21 +123,18 @@ export default function ExperienceCard({
               try {
                 const pathParts = item.image_url.split("experience-uploads/");
                 if (pathParts.length > 1) {
-                  const filePath = pathParts[1];
                   await supabase.storage
                     .from("experience-uploads")
-                    .remove([filePath]);
+                    .remove([pathParts[1]]);
                 }
               } catch (imgErr) {
-                console.log("Image delete failed:", imgErr);
+                console.log(imgErr);
               }
             }
-
             const { error } = await supabase
               .from("experiences")
               .delete()
               .eq("id", item.id);
-
             if (error) throw error;
             if (onDeleteSuccess) onDeleteSuccess(item.id);
           } catch (error) {
@@ -67,13 +146,11 @@ export default function ExperienceCard({
   };
 
   const styles = useMemo(() => getStyles(theme), [theme]);
-
   const fullText = item.description || "";
   const displayText =
     expanded || fullText.length <= DESCRIPTION_LIMIT
       ? fullText
       : `${fullText.substring(0, DESCRIPTION_LIMIT)}...`;
-
   const displayUsername = item.is_anonymous
     ? "Verified Student"
     : item.username;
@@ -113,17 +190,42 @@ export default function ExperienceCard({
           </View>
         </View>
 
-        {isOwner && !readOnly && (
-          <View style={styles.actions}>
+        <View style={styles.actions}>
+          {readOnly ? (
+            <>
+              <TouchableOpacity
+                onPress={handleBookmark}
+                style={styles.actionBtn}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                <Ionicons
+                  name={isSaved ? "bookmark" : "bookmark-outline"}
+                  size={22}
+                  color={isSaved ? theme.primary : theme.textSecondary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleReport}
+                style={[styles.actionBtn, { marginLeft: 12 }]}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                <Ionicons
+                  name="flag-outline"
+                  size={20}
+                  color={theme.textSecondary}
+                />
+              </TouchableOpacity>
+            </>
+          ) : (
             <TouchableOpacity
               onPress={handleDelete}
-              style={styles.actionBtn}
+              style={[styles.actionBtn, { marginLeft: 12 }]}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
               <Ionicons name="trash-outline" size={20} color="#FF5252" />
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -167,7 +269,6 @@ export default function ExperienceCard({
                 </Text>
               )}
             </View>
-
             {item.allowed_branches && (
               <Text
                 style={[styles.metadataText, { fontSize: 13, lineHeight: 20 }]}
@@ -202,7 +303,6 @@ export default function ExperienceCard({
                 ))}
               </View>
             )}
-
             {extractedQuestions.length > 0 && (
               <View style={styles.questionsBlock}>
                 <Text style={styles.questionsHeader}>Questions Asked:</Text>
@@ -271,12 +371,7 @@ const getStyles = (theme) =>
       alignItems: "center",
       marginBottom: 16,
     },
-    userInfo: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 16,
-      flex: 1,
-    },
+    userInfo: { flexDirection: "row", alignItems: "center", gap: 16, flex: 1 },
     avatar: {
       width: 48,
       height: 48,
@@ -295,16 +390,9 @@ const getStyles = (theme) =>
       fontWeight: "600",
       marginTop: 2,
     },
-    actions: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    actionBtn: {
-      padding: 4,
-    },
-    content: {
-      marginBottom: 8,
-    },
+    actions: { flexDirection: "row", alignItems: "center" },
+    actionBtn: { padding: 4 },
+    content: { marginBottom: 8 },
     company: {
       fontSize: 26,
       fontWeight: "900",
@@ -331,20 +419,13 @@ const getStyles = (theme) =>
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
-    roleText: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: theme.textSecondary,
-    },
+    roleText: { fontSize: 16, fontWeight: "700", color: theme.textSecondary },
     metadataText: {
       fontSize: 14,
       color: theme.textSecondary,
       fontWeight: "700",
     },
-    stars: {
-      flexDirection: "row",
-      marginBottom: 16,
-    },
+    stars: { flexDirection: "row", marginBottom: 16 },
     extractionContainer: {
       backgroundColor: theme.inputBackground,
       borderRadius: 16,
@@ -367,14 +448,8 @@ const getStyles = (theme) =>
       borderWidth: 1,
       borderColor: theme.primary + "4D",
     },
-    topicText: {
-      color: theme.primary,
-      fontWeight: "700",
-      fontSize: 12,
-    },
-    questionsBlock: {
-      marginTop: 4,
-    },
+    topicText: { color: theme.primary, fontWeight: "700", fontSize: 12 },
+    questionsBlock: { marginTop: 4 },
     questionsHeader: {
       fontWeight: "800",
       color: theme.textPrimary,

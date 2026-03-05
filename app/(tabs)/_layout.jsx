@@ -22,7 +22,7 @@ export default function TabLayout() {
         },
         headerShadowVisible: false,
         tabBarStyle: {
-          backgroundColor: theme.cardBackground, 
+          backgroundColor: theme.cardBackground,
           borderTopWidth: 1,
           borderTopColor: theme.border,
           paddingTop: 5,
@@ -37,6 +37,15 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bookmarks"
+        options={{
+          title: "Saved",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bookmark" size={size} color={color} />
           ),
         }}
       />
