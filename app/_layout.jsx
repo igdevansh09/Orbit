@@ -80,8 +80,6 @@ export default function RootLayout() {
     }
   }, [
     session,
-    segments,
-    isCheckingAuth,
     hasSeenOnboarding,
     rootNavigationState?.key,
   ]);

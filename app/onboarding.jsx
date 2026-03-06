@@ -43,7 +43,7 @@ export default function Onboarding() {
       <View style={styles.contentWrapper}>
         {/* Animated Icon with a subtle glass/border effect */}
         <Animated.View
-          entering={ZoomIn.delay(100).springify().damping(12)}
+          entering={ZoomIn.delay(300).springify().damping(12)}
           style={[
             styles.iconContainer,
             {
@@ -57,14 +57,14 @@ export default function Onboarding() {
 
         {/* Staggered Text Animations */}
         <Animated.Text
-          entering={FadeInDown.delay(300).springify()}
+          entering={FadeInDown.delay(500).springify()}
           style={[styles.title, { color: theme.textPrimary }]}
         >
           Your Network.{"\n"}Your Orbit.
         </Animated.Text>
 
         <Animated.Text
-          entering={FadeInDown.delay(400).springify()}
+          entering={FadeInDown.delay(600).springify()}
           style={[styles.subtitle, { color: theme.textSecondary }]}
         >
           The exclusive platform for NSUT students to share interview
@@ -74,7 +74,7 @@ export default function Onboarding() {
 
         {/* Animated Button with Theme Gradient */}
         <Animated.View
-          entering={FadeInUp.delay(500).springify()}
+          entering={FadeInUp.delay(700).springify()}
           style={styles.buttonWrapper}
         >
           <TouchableOpacity

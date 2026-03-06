@@ -54,7 +54,8 @@ export const getCreateStyles = (COLORS) =>
       color: COLORS.textSecondary,
       fontWeight: "500",
       marginTop: 4,
-    },
+      marginBottom: 16,
+      },
     optionalText: {
       color: COLORS.textSecondary,
       fontSize: 11,
