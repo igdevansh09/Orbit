@@ -4,9 +4,8 @@ export const getLoginStyles = (COLORS) =>
   StyleSheet.create({
     container: {
       flexGrow: 1,
-      backgroundColor: COLORS.background,
       paddingHorizontal: 24,
-      paddingTop: Platform.OS === "ios" ? 80 : 60,
+      paddingTop: Platform.OS === "ios" ? 100 : 80,
       paddingBottom: 40,
     },
     header: {
@@ -14,16 +13,17 @@ export const getLoginStyles = (COLORS) =>
       marginBottom: 48,
     },
     title: {
-      fontSize: 42,
-      fontWeight: "800",
-      color: COLORS.primary,
+      fontSize: 46,
+      fontWeight: "900",
+      color: COLORS.textPrimary, // Changed to textPrimary to fit GitHub aesthetic better
       marginBottom: 8,
-      letterSpacing: -1,
+      letterSpacing: -1.5,
     },
     subtitle: {
       fontSize: 18,
       color: COLORS.textSecondary,
       fontWeight: "500",
+      letterSpacing: 0.5,
     },
     formContainer: {
       flex: 1,
@@ -32,32 +32,34 @@ export const getLoginStyles = (COLORS) =>
       marginBottom: 24,
     },
     label: {
-      fontSize: 14,
+      fontSize: 13,
       marginBottom: 10,
-      color: COLORS.textPrimary,
+      color: COLORS.textSecondary,
       fontWeight: "700",
       marginLeft: 4,
       textTransform: "uppercase",
-      letterSpacing: 0.5,
+      letterSpacing: 1,
     },
     inputContainer: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: COLORS.inputBackground,
-      borderRadius: 16,
+      borderRadius: 16, // Softer curves
       paddingHorizontal: 16,
-      height: 60,
-      // Removed the harsh 1px border. Relying on color contrast.
+      height: 64,
+      borderWidth: 1,
+      borderColor: COLORS.border, // Utilize your GitHub border color
     },
     inputIcon: {
       marginRight: 12,
+      opacity: 0.8,
     },
     input: {
       flex: 1,
       height: "100%",
       color: COLORS.textDark,
       fontSize: 16,
-      fontWeight: "500",
+      fontWeight: "600",
     },
     eyeIcon: {
       padding: 8,
@@ -67,42 +69,43 @@ export const getLoginStyles = (COLORS) =>
       marginBottom: 32,
     },
     forgotPasswordText: {
-      color: COLORS.primary,
-      fontSize: 15,
+      color: COLORS.textSecondary,
+      fontSize: 14,
       fontWeight: "700",
     },
     button: {
-      backgroundColor: COLORS.primary,
       borderRadius: 16,
-      height: 60,
+      height: 64,
       justifyContent: "center",
       alignItems: "center",
-      shadowColor: COLORS.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
+      shadowColor: COLORS.black,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
       elevation: 6,
     },
     buttonText: {
-      color: COLORS.white,
+      color: COLORS.white, // Inverts perfectly based on your GITHUB_DARK fix
       fontSize: 18,
-      fontWeight: "700",
-      letterSpacing: 0.5,
+      fontWeight: "800",
+      letterSpacing: 1,
     },
     footer: {
       flexDirection: "row",
       justifyContent: "center",
       marginTop: "auto",
-      paddingTop: 32,
+      paddingTop: 40,
     },
     footerText: {
       color: COLORS.textSecondary,
       marginRight: 6,
       fontSize: 15,
+      fontWeight: "500",
     },
     link: {
-      color: COLORS.primary,
+      color: COLORS.textPrimary,
       fontWeight: "800",
       fontSize: 15,
+      textDecorationLine: "underline",
     },
   });

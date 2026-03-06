@@ -4,27 +4,34 @@ import {
   TouchableOpacity,
   StyleSheet,
   useColorScheme,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  ZoomIn,
+} from "react-native-reanimated";
 import { useAuthStore } from "../store/authStore";
 import { Colors } from "../constants/colors";
+
+const { width } = Dimensions.get("window");
 
 export default function Onboarding() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
-  // 1. Pull the action from your centralized store
   const { completeOnboarding } = useAuthStore();
+
+  // Create a subtle background gradient using your exact theme colors
+  const backgroundGradient = [theme.background, theme.cardBackground];
 
   const handleContinue = async () => {
     try {
-      // 2. Fire the action. The store updates memory and storage simultaneously.
       await completeOnboarding();
-
-      // 3. Navigate away. (Note: Once we fix _layout.jsx, this explicit route
-      // push might become redundant, but it's safe to leave as a fallback.)
       router.replace("/(auth)/");
     } catch (error) {
       console.error("Error saving onboarding status:", error);
@@ -32,73 +39,103 @@ export default function Onboarding() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <LinearGradient colors={backgroundGradient} style={styles.container}>
       <View style={styles.contentWrapper}>
-        <View
+        {/* Animated Icon with a subtle glass/border effect */}
+        <Animated.View
+          entering={ZoomIn.delay(100).springify().damping(12)}
           style={[
             styles.iconContainer,
-            { backgroundColor: theme.inputBackground },
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.border,
+            },
           ]}
         >
-          <Ionicons name="rocket" size={64} color={theme.primary} />
-        </View>
+          <Ionicons name="rocket" size={64} color={theme.textPrimary} />
+        </Animated.View>
 
-        <Text style={[styles.title, { color: theme.textPrimary }]}>
+        {/* Staggered Text Animations */}
+        <Animated.Text
+          entering={FadeInDown.delay(300).springify()}
+          style={[styles.title, { color: theme.textPrimary }]}
+        >
           Your Network.{"\n"}Your Orbit.
-        </Text>
+        </Animated.Text>
 
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        <Animated.Text
+          entering={FadeInDown.delay(400).springify()}
+          style={[styles.subtitle, { color: theme.textSecondary }]}
+        >
           The exclusive platform for NSUT students to share interview
           experiences, crack placements, and build a developer legacy. No noise.
           Just signal.
-        </Text>
+        </Animated.Text>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            { backgroundColor: theme.primary, shadowColor: theme.primary },
-          ]}
-          onPress={handleContinue}
-          activeOpacity={0.8}
+        {/* Animated Button with Theme Gradient */}
+        <Animated.View
+          entering={FadeInUp.delay(500).springify()}
+          style={styles.buttonWrapper}
         >
-          <Text style={[styles.buttonText, { color: theme.white }]}>Launch Application</Text>
-          <Ionicons
-            name="arrow-forward"
-            size={20}
-            color={theme.white}
-            style={{ marginLeft: 8 }}
-          />
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleContinue}
+            activeOpacity={0.8}
+            style={[styles.touchableArea, { shadowColor: theme.black }]}
+          >
+            <LinearGradient
+              colors={[theme.primary, theme.textPrimary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.buttonGradient}
+            >
+              <Text style={[styles.buttonText, { color: theme.white }]}>
+                Launch Application
+              </Text>
+              <Ionicons
+                name="arrow-forward"
+                size={22}
+                color={theme.white}
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
     justifyContent: "center",
     alignItems: "center",
   },
   contentWrapper: {
     width: "100%",
     alignItems: "center",
+    paddingHorizontal: 32,
   },
   iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 40,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
   },
   title: {
-    fontSize: 42,
+    fontSize: 46,
     fontWeight: "900",
-    letterSpacing: -1,
-    marginBottom: 16,
-    lineHeight: 48,
+    letterSpacing: -1.5,
+    marginBottom: 20,
+    lineHeight: 52,
     textAlign: "center",
   },
   subtitle: {
@@ -106,24 +143,30 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     lineHeight: 26,
     textAlign: "center",
-    paddingHorizontal: 16,
-    marginBottom: 48,
+    marginBottom: 56,
+    letterSpacing: 0.2,
   },
-  button: {
+  buttonWrapper: {
+    width: "100%",
+    alignItems: "center",
+  },
+  touchableArea: {
+    width: width * 0.85,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  buttonGradient: {
     flexDirection: "row",
     height: 64,
     width: "100%",
-    borderRadius: 100,
+    borderRadius: 32, // Pill shape is great for onboarding
     justifyContent: "center",
     alignItems: "center",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
   },
   buttonText: {
-    color: "#FFF",
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: "800",
     letterSpacing: 0.5,
   },

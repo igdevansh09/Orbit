@@ -11,6 +11,7 @@ export default function AuthLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: theme.background },
+        animation: "fade", // Smooth transition between auth screens
       }}
     />
   );

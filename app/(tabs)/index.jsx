@@ -16,6 +16,9 @@ import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+
 import { useAuthStore } from "../../store/authStore";
 import { supabase } from "../../lib/supabase";
 import ExperienceCard from "../../components/ExperienceCard";
@@ -31,7 +34,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  // PAGINATION STATES (You were missing these)
+  // PAGINATION STATES
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const PAGE_SIZE = 20;
@@ -39,6 +42,9 @@ export default function Home() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
   const styles = useMemo(() => getStyles(theme), [theme]);
+
+  // Dynamic background gradient based on theme
+  const backgroundGradient = [theme.background, theme.cardBackground];
 
   const FILTERS = ["All", "Interview", "OA", "Internship"];
 
@@ -73,10 +79,8 @@ export default function Home() {
     checkSystemNotifications();
   }, [user]);
 
-  // PAGINATED FETCH LOGIC (You were missing the .range() query)
+  // PAGINATED FETCH LOGIC
   const fetchExperiences = async (isRefresh = false) => {
-    // THE FIX: Block if we are currently loading a new page,
-    // BUT allow it to pass if it is an initial load or a pull-to-refresh
     if (loading && !isRefresh) return;
     if (!hasMore && !isRefresh) return;
 
@@ -98,7 +102,7 @@ export default function Home() {
 
       if (isRefresh) {
         setAllExperiences(data || []);
-        setPage(1); // Reset to page 1 after a fresh load
+        setPage(1);
       } else {
         setAllExperiences((prev) => [...prev, ...data]);
         setPage((prev) => prev + 1);
@@ -144,7 +148,10 @@ export default function Home() {
   // Extract the header so FlatList can manage it
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <View style={styles.topRow}>
+      <Animated.View
+        entering={FadeInDown.delay(50).springify()}
+        style={styles.topRow}
+      >
         <View>
           <Text style={styles.brandTitle}>
             Orbit <Text style={{ fontSize: 28 }}>🚀</Text>
@@ -170,14 +177,17 @@ export default function Home() {
             contentFit="cover"
           />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <View style={styles.searchContainer}>
+      <Animated.View
+        entering={FadeInDown.delay(150).springify()}
+        style={styles.searchContainer}
+      >
         <Ionicons
           name="search"
-          size={20}
+          size={22}
           color={theme.textSecondary}
-          style={{ marginRight: 8 }}
+          style={{ marginRight: 10 }}
         />
         <TextInput
           placeholder="Search company or role (e.g. Google)..."
@@ -190,75 +200,97 @@ export default function Home() {
           autoCapitalize="none"
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
+          <TouchableOpacity
+            onPress={() => setSearchQuery("")}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons
               name="close-circle"
-              size={18}
+              size={20}
               color={theme.textSecondary}
             />
           </TouchableOpacity>
         )}
-      </View>
+      </Animated.View>
 
-      <View style={styles.filterContainer}>
+      <Animated.View
+        entering={FadeInDown.delay(250).springify()}
+        style={styles.filterContainer}
+      >
         <FlatList
           horizontal
           data={FILTERS}
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item}
-          contentContainerStyle={{ gap: 4, paddingRight: 16 }}
+          contentContainerStyle={{ gap: 8, paddingRight: 16 }}
           renderItem={({ item }) => {
             const isActive = selectedCategory === item;
             return (
               <TouchableOpacity
                 onPress={() => setSelectedCategory(item)}
-                style={[
-                  styles.chip,
-                  isActive && {
-                    backgroundColor: theme.primary,
-                    borderColor: theme.primary,
-                  },
-                ]}
+                activeOpacity={0.7}
               >
-                <Text
+                <LinearGradient
+                  colors={
+                    isActive
+                      ? [theme.primary, theme.textPrimary]
+                      : [theme.cardBackground, theme.cardBackground]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={[
-                    styles.chipText,
-                    isActive && { color: theme.white, fontWeight: "bold" },
+                    styles.chip,
+                    isActive ? styles.chipActive : styles.chipInactive,
                   ]}
                 >
-                  {item}
-                </Text>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      isActive
+                        ? { color: theme.white, fontWeight: "800" }
+                        : { color: theme.textSecondary },
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
             );
           }}
         />
-      </View>
+      </Animated.View>
 
       {(searchQuery || selectedCategory !== "All") && (
-        <Text style={styles.resultCount}>
+        <Animated.Text
+          entering={FadeInUp.delay(300).springify()}
+          style={styles.resultCount}
+        >
           {filteredExperiences.length}{" "}
           {filteredExperiences.length === 1 ? "result" : "results"} found
-        </Text>
+        </Animated.Text>
       )}
     </View>
   );
 
   return (
-    <View
+    <LinearGradient
+      colors={backgroundGradient}
       style={[styles.container, { paddingTop: StatusBar.currentHeight || 0 }]}
     >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
       />
 
-      {/* THE FLATLIST (Replaces your ScrollView) */}
+      {/* THE FLATLIST */}
       <FlatList
         data={filteredExperiences}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
         ListHeaderComponent={renderHeader}
         refreshControl={
           <RefreshControl
@@ -267,11 +299,16 @@ export default function Home() {
             tintColor={theme.primary}
           />
         }
-        renderItem={({ item }) => (
-          <ExperienceCard item={item} />
+        renderItem={({ item, index }) => (
+          <Animated.View
+            entering={FadeInUp.delay(
+              index < 5 ? 300 + index * 100 : 0,
+            ).springify()}
+          >
+            <ExperienceCard item={item} />
+          </Animated.View>
         )}
         onEndReached={() => {
-          // Only paginate if we aren't heavily filtering
           if (searchQuery.length === 0 && selectedCategory === "All") {
             fetchExperiences();
           }
@@ -282,31 +319,36 @@ export default function Home() {
             <ActivityIndicator
               size="small"
               color={theme.primary}
-              style={{ marginVertical: 20 }}
+              style={{ marginVertical: 24 }}
             />
           ) : null
         }
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="search-outline"
-                size={48}
-                color={theme.textSecondary}
-              />
+            <Animated.View
+              entering={FadeInUp.delay(200)}
+              style={styles.emptyState}
+            >
+              <View style={styles.emptyIconWrapper}>
+                <Ionicons
+                  name="search-outline"
+                  size={54}
+                  color={theme.textSecondary}
+                />
+              </View>
               <Text style={styles.emptyText}>No results found</Text>
               <Text style={styles.emptySubText}>
-                Try a different keyword or category.
+                Try adjusting your search or filters.
               </Text>
-            </View>
+            </Animated.View>
           ) : (
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color={theme.primary} />
+              <ActivityIndicator size="large" color={theme.textPrimary} />
             </View>
           )
         }
       />
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -314,25 +356,21 @@ const getStyles = (theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.background,
-      paddingHorizontal: 16,
-      paddingTop: 10,
     },
     headerContainer: {
-      marginBottom: 16,
-      paddingTop: 10,
+      marginBottom: 20,
+      paddingTop: 16,
     },
     topRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 24,
-      marginTop: 10,
+      marginBottom: 28,
     },
     brandTitle: {
-      fontSize: 38,
+      fontSize: 40,
       fontWeight: "900",
-      color: theme.primary,
+      color: theme.textPrimary,
       letterSpacing: -1.5,
       marginBottom: 4,
     },
@@ -340,91 +378,113 @@ const getStyles = (theme) =>
       fontSize: 16,
       color: theme.textSecondary,
       fontWeight: "600",
-      letterSpacing: -0.2,
+      letterSpacing: 0.2,
     },
     avatarShadow: {
       shadowColor: theme.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      elevation: 6,
     },
     headerAvatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
       backgroundColor: theme.inputBackground,
       borderWidth: 2,
-      borderColor: theme.background,
-    },
-    iconBtn: {
-      padding: 8,
-      borderRadius: 50,
-      backgroundColor: theme.cardBackground,
-      borderWidth: 1,
       borderColor: theme.border,
     },
     searchContainer: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.inputBackground,
-      borderRadius: 14,
-      paddingHorizontal: 12,
-      height: 52,
+      borderRadius: 16, // Smoother border radius matching auth
+      paddingHorizontal: 16,
+      height: 60,
       borderWidth: 1,
       borderColor: theme.border,
-      marginBottom: 16,
+      marginBottom: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 12,
+      elevation: 2,
     },
     searchInput: {
       flex: 1,
       fontSize: 16,
       color: theme.textPrimary,
       height: "100%",
+      fontWeight: "500",
     },
     filterContainer: {
       flexDirection: "row",
-      marginBottom: 12,
+      marginBottom: 16,
     },
     chip: {
-      paddingVertical: 8,
-      paddingHorizontal: 18,
-      borderRadius: 24,
-      backgroundColor: theme.cardBackground,
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 24, // Pill shape
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    chipActive: {
+      borderWidth: 0, // Gradient takes care of this
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    chipInactive: {
       borderWidth: 1,
       borderColor: theme.border,
-      marginRight: 8,
     },
     chipText: {
       fontSize: 14,
-      color: theme.textPrimary,
-      fontWeight: "500",
+      fontWeight: "600",
+      letterSpacing: 0.3,
     },
     resultCount: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.textSecondary,
-      marginTop: 4,
+      marginTop: 8,
       marginLeft: 4,
-      fontWeight: "500",
+      fontWeight: "600",
     },
     emptyState: {
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 60,
+      marginTop: 80,
+    },
+    emptyIconWrapper: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: theme.inputBackground,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     emptyText: {
-      fontSize: 18,
-      fontWeight: "bold",
+      fontSize: 20,
+      fontWeight: "800",
       color: theme.textPrimary,
       marginTop: 12,
+      letterSpacing: -0.5,
     },
     emptySubText: {
-      fontSize: 14,
+      fontSize: 15,
       color: theme.textSecondary,
-      marginTop: 4,
+      marginTop: 8,
+      fontWeight: "500",
     },
     loaderContainer: {
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 80,
+      marginTop: 100,
     },
   });

@@ -4,9 +4,8 @@ export const getSignupStyles = (COLORS) =>
   StyleSheet.create({
     container: {
       flexGrow: 1,
-      backgroundColor: COLORS.background,
       paddingHorizontal: 24,
-      paddingTop: Platform.OS === "ios" ? 80 : 60,
+      paddingTop: Platform.OS === "ios" ? 100 : 80,
       paddingBottom: 40,
     },
     header: {
@@ -14,9 +13,9 @@ export const getSignupStyles = (COLORS) =>
       marginBottom: 40,
     },
     title: {
-      fontSize: 36,
-      fontWeight: "800",
-      color: COLORS.primary,
+      fontSize: 38,
+      fontWeight: "900",
+      color: COLORS.textPrimary, // Matching Login header
       marginBottom: 8,
       letterSpacing: -1,
     },
@@ -35,7 +34,7 @@ export const getSignupStyles = (COLORS) =>
     label: {
       fontSize: 13,
       marginBottom: 10,
-      color: COLORS.textPrimary,
+      color: COLORS.textSecondary,
       fontWeight: "700",
       marginLeft: 4,
       textTransform: "uppercase",
@@ -47,39 +46,41 @@ export const getSignupStyles = (COLORS) =>
       backgroundColor: COLORS.inputBackground,
       borderRadius: 16,
       paddingHorizontal: 16,
-      height: 60,
+      height: 64,
+      borderWidth: 1, // Adding the border for Glassmorphism
+      borderColor: COLORS.border,
     },
     inputIcon: {
       marginRight: 12,
+      opacity: 0.8,
     },
     input: {
       flex: 1,
       height: "100%",
       color: COLORS.textDark,
       fontSize: 16,
-      fontWeight: "500",
+      fontWeight: "600",
     },
     eyeIcon: {
       padding: 8,
     },
     button: {
-      backgroundColor: COLORS.primary,
       borderRadius: 16,
-      height: 60,
+      height: 64,
       justifyContent: "center",
       alignItems: "center",
-      marginTop: 12,
-      shadowColor: COLORS.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
+      marginTop: 20,
+      shadowColor: COLORS.black,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
       elevation: 6,
     },
     buttonText: {
       color: COLORS.white,
       fontSize: 18,
-      fontWeight: "700",
-      letterSpacing: 0.5,
+      fontWeight: "800",
+      letterSpacing: 1,
     },
     footer: {
       flexDirection: "row",
@@ -90,10 +91,12 @@ export const getSignupStyles = (COLORS) =>
       color: COLORS.textSecondary,
       marginRight: 6,
       fontSize: 15,
+      fontWeight: "500",
     },
     link: {
-      color: COLORS.primary,
+      color: COLORS.textPrimary,
       fontWeight: "800",
       fontSize: 15,
+      textDecorationLine: "underline",
     },
   });

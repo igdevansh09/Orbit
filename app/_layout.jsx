@@ -6,18 +6,13 @@ import {
   useRootNavigationState,
 } from "expo-router";
 import { useEffect } from "react";
-import {
-  View,
-  ActivityIndicator,
-  useColorScheme,
-  AppState,
-} from "react-native";
+import { ActivityIndicator, useColorScheme, AppState } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/authStore";
 import { Colors } from "../constants/colors";
 
 export default function RootLayout() {
-  // 1. Pull ALL state directly from the single source of truth
   const {
     session,
     checkAuth,
@@ -32,12 +27,10 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
-  // 2. Initial Boot: Tell the store to do its job.
   useEffect(() => {
     checkAuth();
   }, []);
 
-  // 6. App State Listener: Refresh session when app comes to foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", async (state) => {
       if (state === "active" && session) {
@@ -51,9 +44,7 @@ export default function RootLayout() {
     };
   }, [session, refreshSession]);
 
-  // 3. The Master Routing Engine
   useEffect(() => {
-    // ABORT routing if the store is still checking, onboarding is unknown, or tree hasn't mounted
     if (
       isCheckingAuth ||
       hasSeenOnboarding === null ||
@@ -66,13 +57,11 @@ export default function RootLayout() {
     const isVerifyEmailPage = segments[0] === "verify-email";
     const isOnboarding = segments[0] === "onboarding";
 
-    // A. User hasn't seen onboarding
     if (!hasSeenOnboarding && !isOnboarding) {
       router.replace("/onboarding");
       return;
     }
 
-    // B. User saw onboarding, but is NOT logged in
     if (
       hasSeenOnboarding &&
       !session &&
@@ -85,7 +74,6 @@ export default function RootLayout() {
       return;
     }
 
-    // C. User saw onboarding AND is logged in
     if (hasSeenOnboarding && session && inAuthGroup) {
       router.replace("/(tabs)");
       return;
@@ -98,7 +86,6 @@ export default function RootLayout() {
     rootNavigationState?.key,
   ]);
 
-  // 4. Edge-Case Auth Events (Password Recovery Deep Links)
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event) => {
@@ -114,23 +101,19 @@ export default function RootLayout() {
     };
   }, []);
 
-  // 5. Loading State: Block UI until the store has exact answers
+  // UPGRADED LOADING STATE
   if (
     isCheckingAuth ||
     hasSeenOnboarding === null ||
     !rootNavigationState?.key
   ) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: theme.background,
-        }}
+      <LinearGradient
+        colors={[theme.background, theme.cardBackground]}
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
       >
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
+        <ActivityIndicator size="large" color={theme.textPrimary} />
+      </LinearGradient>
     );
   }
 

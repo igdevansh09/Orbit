@@ -12,8 +12,10 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuthStore } from "@/store/authStore";
-import { Colors } from "@/constants/colors";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useAuthStore } from "../../store/authStore";
+import { Colors } from "../../constants/colors";
 
 export default function VerifyEmail() {
   const [code, setCode] = useState("");
@@ -26,6 +28,8 @@ export default function VerifyEmail() {
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme === "dark" ? "dark" : "light"];
+
+  const backgroundGradient = [theme.background, theme.cardBackground];
 
   const handleVerify = async () => {
     if (!code || code.length < 6) {
@@ -66,62 +70,92 @@ export default function VerifyEmail() {
   const styles = getStyles(theme);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <View style={styles.container}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <Text style={styles.title}>Verify Your Email</Text>
-          <Text style={styles.subtitle}>
-            We've sent a 6-digit verification code to {email}
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="key-outline"
-              size={20}
-              color={theme.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              placeholder="00000000"
-              placeholderTextColor={theme.placeholderText}
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              maxLength={8}
-              style={[styles.input, { letterSpacing: 8, fontSize: 20 }]}
-            />
-          </View>
-
-          <TouchableOpacity
-            onPress={handleVerify}
-            disabled={loading}
-            style={styles.button}
-          >
-            {loading ? (
-              <ActivityIndicator color={theme.white} />
-            ) : (
-              <Text style={styles.buttonText}>Verify Email</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.resendContainer}>
-            <Text style={styles.resendText}>Didn't receive the code?</Text>
-            <TouchableOpacity onPress={handleResend} disabled={loading}>
-              <Text style={styles.resendLink}>Resend Code</Text>
+    <LinearGradient colors={backgroundGradient} style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={styles.container}>
+          <Animated.View entering={FadeInDown.delay(50).springify()}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Ionicons name="arrow-back" size={28} color={theme.textPrimary} />
             </TouchableOpacity>
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.delay(150).springify()}
+            style={styles.header}
+          >
+            <Text style={styles.title}>Verify Your Email</Text>
+            <Text style={styles.subtitle}>
+              We've sent a 6-digit verification code to {email}
+            </Text>
+          </Animated.View>
+
+          <View style={styles.form}>
+            <Animated.View
+              entering={FadeInDown.delay(250).springify()}
+              style={styles.inputContainer}
+            >
+              <Ionicons
+                name="key-outline"
+                size={22}
+                color={theme.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                placeholder="000000"
+                placeholderTextColor={theme.placeholderText}
+                value={code}
+                onChangeText={setCode}
+                keyboardType="number-pad"
+                maxLength={8}
+                style={[
+                  styles.input,
+                  { letterSpacing: 12, fontSize: 22, textAlign: "center" },
+                ]}
+              />
+            </Animated.View>
+
+            <Animated.View entering={FadeInUp.delay(350).springify()}>
+              <TouchableOpacity
+                onPress={handleVerify}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[theme.primary, theme.textPrimary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.button}
+                >
+                  {loading ? (
+                    <ActivityIndicator color={theme.white} />
+                  ) : (
+                    <Text style={styles.buttonText}>Verify Email</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View
+              entering={FadeInUp.delay(450).springify()}
+              style={styles.resendContainer}
+            >
+              <Text style={styles.resendText}>Didn't receive the code?</Text>
+              <TouchableOpacity
+                onPress={handleResend}
+                disabled={loading}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.resendLink}>Resend Code</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
@@ -132,26 +166,28 @@ const getStyles = (theme) =>
       paddingHorizontal: 24,
     },
     backButton: {
-      marginTop: 20,
-      marginBottom: 20,
-      width: 40,
-      height: 40,
+      marginTop: 10,
+      marginBottom: 30,
+      width: 44,
+      height: 44,
       justifyContent: "center",
       alignItems: "flex-start",
     },
     header: {
-      marginBottom: 32,
+      marginBottom: 40,
     },
     title: {
-      fontSize: 32,
-      fontWeight: "bold",
+      fontSize: 34,
+      fontWeight: "900",
       color: theme.textPrimary,
       marginBottom: 12,
+      letterSpacing: -1,
     },
     subtitle: {
       fontSize: 16,
       color: theme.textSecondary,
       lineHeight: 24,
+      fontWeight: "500",
     },
     form: {
       gap: 20,
@@ -160,38 +196,39 @@ const getStyles = (theme) =>
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.inputBackground,
-      borderRadius: 12,
+      borderRadius: 16,
       paddingHorizontal: 16,
-      height: 56,
+      height: 64,
       borderWidth: 1,
       borderColor: theme.border,
     },
     inputIcon: {
       marginRight: 12,
+      opacity: 0.8,
     },
     input: {
       flex: 1,
-      color: theme.textPrimary,
+      color: theme.textDark,
       fontSize: 16,
-      fontWeight: "500",
+      fontWeight: "600",
     },
     button: {
-      backgroundColor: theme.primary,
-      height: 56,
-      borderRadius: 12,
+      height: 64,
+      borderRadius: 16,
       justifyContent: "center",
       alignItems: "center",
-      marginTop: 16,
-      shadowColor: theme.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 4,
+      marginTop: 20,
+      shadowColor: theme.black,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      elevation: 6,
     },
     buttonText: {
       color: theme.white,
-      fontSize: 16,
-      fontWeight: "bold",
+      fontSize: 18,
+      fontWeight: "800",
+      letterSpacing: 1,
     },
     resendContainer: {
       flexDirection: "row",
@@ -201,12 +238,14 @@ const getStyles = (theme) =>
       gap: 6,
     },
     resendText: {
-      fontSize: 14,
+      fontSize: 15,
       color: theme.textSecondary,
+      fontWeight: "500",
     },
     resendLink: {
-      fontSize: 14,
-      color: theme.primary,
-      fontWeight: "bold",
+      fontSize: 15,
+      color: theme.textPrimary,
+      fontWeight: "800",
+      textDecorationLine: "underline",
     },
   });

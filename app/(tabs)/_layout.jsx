@@ -6,7 +6,6 @@ import { Colors } from "../../constants/colors";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
@@ -14,18 +13,27 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.primary,
+        tabBarActiveTintColor: theme.textPrimary, // Changed to textPrimary for a sharper look
         tabBarInactiveTintColor: theme.textSecondary,
         headerTitleStyle: {
           color: theme.textPrimary,
-          fontWeight: "600",
+          fontWeight: "700",
         },
         headerShadowVisible: false,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginTop: 2,
+        },
         tabBarStyle: {
           backgroundColor: theme.cardBackground,
-          borderTopWidth: 1,
-          borderTopColor: theme.border,
-          paddingTop: 5,
+          borderTopWidth: 0, // Removed harsh border
+          elevation: 10, // Added soft shadow for Android
+          shadowColor: theme.black, // Added soft shadow for iOS
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
+          paddingTop: 8,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           height: 60 + (insets.bottom > 0 ? insets.bottom : 10),
         },
@@ -54,7 +62,7 @@ export default function TabLayout() {
         options={{
           title: "Share",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle" size={size} color={color} />
+            <Ionicons name="add-circle" size={size + 4} color={color} />
           ),
         }}
       />

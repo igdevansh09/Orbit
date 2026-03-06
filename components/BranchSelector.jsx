@@ -46,23 +46,27 @@ export default function BranchSelector({ value, onChange }) {
           { backgroundColor: theme.inputBackground, borderColor: theme.border },
         ]}
         onPress={() => setIsVisible(true)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         <Text
           style={{
-            color: value ? theme.textPrimary : theme.textSecondary,
+            color: value ? theme.textDark : theme.placeholderText,
             fontSize: 16,
+            fontWeight: "600",
           }}
         >
           {value || "Select Branch"}
         </Text>
-        <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+        <Ionicons name="chevron-down" size={22} color={theme.textSecondary} />
       </TouchableOpacity>
 
       <Modal visible={isVisible} transparent={true} animationType="slide">
         <View style={styles.modalOverlay}>
           <View
-            style={[styles.modalContent, { backgroundColor: theme.background }]}
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.background, borderColor: theme.border },
+            ]}
           >
             <View
               style={[styles.modalHeader, { borderBottomColor: theme.border }]}
@@ -70,8 +74,15 @@ export default function BranchSelector({ value, onChange }) {
               <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
                 Select Your Branch
               </Text>
-              <TouchableOpacity onPress={() => setIsVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.textPrimary} />
+              <TouchableOpacity
+                onPress={() => setIsVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={26}
+                  color={theme.textSecondary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -79,6 +90,7 @@ export default function BranchSelector({ value, onChange }) {
               data={BRANCHES}
               keyExtractor={(item) => item}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
               renderItem={({ item }) => {
                 const isSelected = item === value;
                 return (
@@ -86,6 +98,7 @@ export default function BranchSelector({ value, onChange }) {
                     style={[
                       styles.branchItem,
                       { borderBottomColor: theme.border },
+                      isSelected && { backgroundColor: theme.cardBackground },
                     ]}
                     onPress={() => {
                       onChange(item);
@@ -95,7 +108,7 @@ export default function BranchSelector({ value, onChange }) {
                     <Text
                       style={{
                         color: isSelected ? theme.primary : theme.textPrimary,
-                        fontWeight: isSelected ? "bold" : "500",
+                        fontWeight: isSelected ? "800" : "500",
                         fontSize: 16,
                       }}
                     >
@@ -103,8 +116,8 @@ export default function BranchSelector({ value, onChange }) {
                     </Text>
                     {isSelected && (
                       <Ionicons
-                        name="checkmark"
-                        size={20}
+                        name="checkmark-circle"
+                        size={24}
                         color={theme.primary}
                       />
                     )}
@@ -125,39 +138,42 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    height: 56,
-    marginBottom: 16,
+    height: 64, // Matched with auth inputs
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)", // Softer overlay
     justifyContent: "flex-end",
   },
   modalContent: {
-    height: "60%",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 32,
+    height: "65%",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     borderBottomWidth: 1,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: -0.5,
   },
   branchItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });

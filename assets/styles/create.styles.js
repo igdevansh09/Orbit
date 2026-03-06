@@ -4,56 +4,76 @@ export const getCreateStyles = (COLORS) =>
   StyleSheet.create({
     container: {
       flexGrow: 1,
-      paddingHorizontal: 12, // Reduced from 24 for maximum width
+      paddingHorizontal: 20,
       paddingTop: Platform.OS === "ios" ? 60 : 40,
       paddingBottom: 40,
     },
-    scrollViewStyle: {
-      flex: 1,
-      backgroundColor: COLORS.background,
-    },
     header: {
       alignItems: "flex-start",
-      marginBottom: 40,
-      paddingHorizontal: 4, // Keeps text aligned beautifully with the rounded inputs
+      marginBottom: 32,
     },
     title: {
-      fontSize: 42,
+      fontSize: 38,
       fontWeight: "900",
-      color: COLORS.primary,
+      color: COLORS.textPrimary,
       marginBottom: 8,
-      letterSpacing: -1.5,
+      letterSpacing: -1,
     },
     subtitle: {
       fontSize: 16,
       color: COLORS.textSecondary,
-      fontWeight: "600",
-      letterSpacing: -0.2,
+      fontWeight: "500",
+      letterSpacing: 0.2,
+      lineHeight: 22,
     },
     form: {
       flex: 1,
     },
     formGroup: {
-      marginBottom: 28,
+      marginBottom: 24,
+    },
+    rowGroup: {
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: COLORS.inputBackground,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
     },
     label: {
-      fontSize: 14,
-      marginBottom: 12,
-      color: COLORS.textPrimary,
-      fontWeight: "800",
-      letterSpacing: -0.3,
-      marginLeft: 12, // Adjusted to align visually with the curve of the input below
+      fontSize: 13,
+      marginBottom: 10,
+      color: COLORS.textSecondary,
+      fontWeight: "700",
+      marginLeft: 4,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    helperText: {
+      fontSize: 13,
+      color: COLORS.textSecondary,
+      fontWeight: "500",
+      marginTop: 4,
+    },
+    optionalText: {
+      color: COLORS.textSecondary,
+      fontSize: 11,
+      textTransform: "none",
+      fontWeight: "500",
     },
     inputContainer: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: COLORS.inputBackground,
-      borderRadius: 100,
-      paddingHorizontal: 16, // Slightly tighter internal padding
+      borderRadius: 16, // Consistent with Auth & Home inputs
+      paddingHorizontal: 16,
       height: 64,
+      borderWidth: 1,
+      borderColor: COLORS.border,
     },
     inputIcon: {
       marginRight: 10,
+      opacity: 0.8,
     },
     input: {
       flex: 1,
@@ -64,7 +84,9 @@ export const getCreateStyles = (COLORS) =>
     },
     textArea: {
       backgroundColor: COLORS.inputBackground,
-      borderRadius: 24,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
       padding: 20,
       minHeight: 160,
       color: COLORS.textDark,
@@ -76,47 +98,59 @@ export const getCreateStyles = (COLORS) =>
     chipContainer: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 10, // Tighter gap for wider layout
+      gap: 10,
     },
     chip: {
-      paddingVertical: 14,
+      paddingVertical: 12,
       paddingHorizontal: 20,
-      borderRadius: 100,
+      borderRadius: 24, // Pill shape
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    chipInactive: {
       backgroundColor: COLORS.inputBackground,
+      borderWidth: 1,
+      borderColor: COLORS.border,
     },
     chipActive: {
-      backgroundColor: COLORS.primary,
+      borderWidth: 0,
       shadowColor: COLORS.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 8,
-      elevation: 4,
+      elevation: 5,
     },
     chipText: {
-      fontSize: 15,
+      fontSize: 14,
       color: COLORS.textSecondary,
-      fontWeight: "800",
+      fontWeight: "600",
     },
     chipTextActive: {
       color: COLORS.white,
+      fontWeight: "800",
     },
     ratingContainer: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       backgroundColor: COLORS.inputBackground,
-      borderRadius: 100,
-      paddingVertical: 12,
-      paddingHorizontal: 16, // Adjusted for wider stretch
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
     },
     starButton: {
       padding: 4,
     },
     imagePicker: {
       width: "100%",
-      height: 240,
+      height: 200,
       backgroundColor: COLORS.inputBackground,
-      borderRadius: 28, // Matches the wider look slightly better
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderStyle: "dashed", // Gives a nice "upload zone" feel
       overflow: "hidden",
       justifyContent: "center",
       alignItems: "center",
@@ -132,28 +166,27 @@ export const getCreateStyles = (COLORS) =>
     placeholderText: {
       color: COLORS.textSecondary,
       marginTop: 12,
-      fontSize: 16,
-      fontWeight: "700",
+      fontSize: 15,
+      fontWeight: "600",
     },
     button: {
-      backgroundColor: COLORS.primary,
-      borderRadius: 100,
+      borderRadius: 16,
       height: 64,
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
-      marginTop: 24,
-      shadowColor: COLORS.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.25,
-      shadowRadius: 16,
+      marginTop: 10,
+      shadowColor: COLORS.black,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
       elevation: 6,
     },
     buttonText: {
       color: COLORS.white,
       fontSize: 18,
       fontWeight: "800",
-      letterSpacing: 0.5,
+      letterSpacing: 1,
     },
     buttonIcon: {
       marginRight: 10,
