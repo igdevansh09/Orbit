@@ -1,11 +1,6 @@
 import "react-native-url-polyfill/auto";
-import {
-  Slot,
-  useRouter,
-  useSegments,
-  useRootNavigationState,
-} from "expo-router";
-import { useEffect } from "react";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, useColorScheme, AppState } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../lib/supabase";
@@ -22,13 +17,14 @@ export default function RootLayout() {
   } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
-  const rootNavigationState = useRootNavigationState();
-
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
+  // 1. THE LOCK: Track if we've completed the initial auth sweep to prevent bouncing
+  const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
-    checkAuth();
+    checkAuth().finally(() => setIsReady(true));
   }, []);
 
   useEffect(() => {
@@ -38,73 +34,55 @@ export default function RootLayout() {
         await refreshSession();
       }
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, [session, refreshSession]);
 
+  // 2. THE ROUTER MACHINE
   useEffect(() => {
-    if (
-      isCheckingAuth ||
-      hasSeenOnboarding === null ||
-      !rootNavigationState?.key
-    )
-      return;
+    // Do not attempt to route if we are still fetching core data from AsyncStorage/Supabase
+    if (!isReady || isCheckingAuth || hasSeenOnboarding === null) return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    const isResetPage = segments[0] === "reset-password";
-    const isVerifyEmailPage = segments[0] === "verify-email";
     const isOnboarding = segments[0] === "onboarding";
+    const isResetPage = segments[0] === "reset-password";
+    const isVerifyPage = segments[0] === "verify-email";
 
-    if (!hasSeenOnboarding && !isOnboarding) {
-      router.replace("/onboarding");
+    // Priority 1: Onboarding
+    if (!hasSeenOnboarding) {
+      if (!isOnboarding) router.replace("/onboarding");
       return;
     }
 
-    if (
-      hasSeenOnboarding &&
-      !session &&
-      !inAuthGroup &&
-      !isResetPage &&
-      !isVerifyEmailPage &&
-      !isOnboarding
-    ) {
-      router.replace("/(auth)");
+    // Priority 2: Unauthenticated Users
+    if (!session) {
+      if (!inAuthGroup && !isResetPage && !isVerifyPage && !isOnboarding) {
+        router.replace("/(auth)");
+      }
       return;
     }
 
-    if (hasSeenOnboarding && session && inAuthGroup) {
+    // Priority 3: Authenticated Users
+    if (session && (inAuthGroup || isOnboarding)) {
       router.replace("/(tabs)");
       return;
     }
-  }, [
-    session,
-    hasSeenOnboarding,
-    rootNavigationState?.key,
-  ]);
+  }, [session, hasSeenOnboarding, isCheckingAuth, isReady, segments]); // Notice `segments` is required here
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event) => {
         if (event === "PASSWORD_RECOVERY") {
-          console.log("Password Recovery Event Detected!");
           router.replace("/reset-password");
+        } else if (event === "SIGNED_OUT") {
+          router.replace("/(auth)");
         }
       },
     );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    return () => authListener.subscription.unsubscribe();
   }, []);
 
-  // UPGRADED LOADING STATE
-  if (
-    isCheckingAuth ||
-    hasSeenOnboarding === null ||
-    !rootNavigationState?.key
-  ) {
+  // 3. THE RENDER BLOCK: Hold the screen hostage until state is resolved
+  if (!isReady || isCheckingAuth || hasSeenOnboarding === null) {
     return (
       <LinearGradient
         colors={[theme.background, theme.cardBackground]}
