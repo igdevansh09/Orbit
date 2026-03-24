@@ -5,7 +5,7 @@ An exclusive, high-signal community platform engineered for NSUT students. Stop 
 
 ### Demo
 
-[Watch the App Demo Video](https://youtube.com/shorts/v6xYtL_21RY?feature=share)
+[Watch the App Demo Video](https://youtube.com/shorts/zClmFVKyZWM?si=biZYhX0OwxYBvZD0)
 
 * * * * *
 
